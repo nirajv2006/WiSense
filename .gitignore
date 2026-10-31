@@ -1,0 +1,4 @@
+.DS_Store
+occupancy.db
+.idea/            
+*.db

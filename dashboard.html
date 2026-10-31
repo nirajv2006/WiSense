@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WiSense Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #111;
+      color: #ccc;
+      font-family: 'Segoe UI', sans-serif;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── top bar ── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 24px;
+      border-bottom: 1px solid #222;
+      flex-shrink: 0;
+    }
+
+    header h1 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #fff;
+      letter-spacing: 0.3px;
+    }
+
+    header h1 span { color: #555; font-weight: 400; }
+
+    .top-right {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    #connLabel {
+      font-size: 0.8rem;
+      color: #555;
+    }
+    #connLabel.on  { color: #5c5; }
+    #connLabel.sim { color: #88f; }
+
+    button {
+      padding: 6px 16px;
+      border-radius: 5px;
+      border: 1px solid #333;
+      background: #1e1e1e;
+      color: #ccc;
+      font-size: 0.82rem;
+      cursor: pointer;
+    }
+    button:hover { background: #282828; }
+    button:disabled { opacity: 0.35; cursor: default; }
+    button.active { border-color: #555; color: #fff; }
+
+    /* ── main area ── */
+    main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 240px 1fr;
+      min-height: 0;
+    }
+
+    /* ── left: status ── */
+    .status-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      border-right: 1px solid #222;
+      padding: 24px 16px;
+      gap: 12px;
+      transition: background 0.4s;
+    }
+
+    .status-col.waiting     { background: #111; }
+    .status-col.calibrating { background: #111; }
+    .status-col.occupied    { background: #1c0a0a; }
+    .status-col.clear       { background: #0a150a; }
+
+    .status-label {
+      font-size: 0.65rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #444;
+    }
+
+    .status-box {
+      width: 100%;
+      padding: 20px 12px;
+      border-radius: 6px;
+      text-align: center;
+      background: #1a1a1a;
+      border: 1px solid #2a2a2a;
+      transition: background 0.3s, border-color 0.3s;
+    }
+
+    .status-col.occupied .status-box {
+      background: #3a0909;
+      border-color: #7a1010;
+    }
+    .status-col.clear .status-box {
+      background: #0a2a0a;
+      border-color: #1a6a1a;
+    }
+    .status-col.calibrating .status-box {
+      background: #0d0d22;
+      border-color: #2a2a55;
+    }
+
+    .status-text {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #444;
+      line-height: 1.3;
+      white-space: pre;
+    }
+    .status-col.occupied    .status-text { color: #e05555; }
+    .status-col.clear       .status-text { color: #55cc55; }
+    .status-col.calibrating .status-text { color: #7788ee; font-size: 1rem; font-weight: 500; }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #333;
+      margin-top: 4px;
+    }
+    .status-col.occupied    .status-dot { background: #e05555; }
+    .status-col.clear       .status-dot { background: #55cc55; }
+    .status-col.calibrating .status-dot { background: #7788ee; }
+
+    /* ── right: chart ── */
+    .chart-col {
+      display: flex;
+      flex-direction: column;
+      padding: 20px 22px 14px;
+      gap: 10px;
+    }
+
+    .chart-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .chart-top span {
+      font-size: 0.75rem;
+      color: #444;
+    }
+
+    .chart-wrap {
+      flex: 1;
+      position: relative;
+      min-height: 0;
+    }
+
+    /* ── stats bar ── */
+    footer {
+      border-top: 1px solid #222;
+      padding: 10px 24px;
+      display: flex;
+      gap: 36px;
+      flex-shrink: 0;
+      flex-wrap: wrap;
+    }
+
+    .stat { display: flex; flex-direction: column; gap: 2px; }
+
+    .stat-name {
+      font-size: 0.62rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #444;
+    }
+
+    .stat-val {
+      font-size: 1rem;
+      font-weight: 600;
+      font-family: 'Courier New', monospace;
+      color: #777;
+    }
+
+    .stat-val.lit { color: #aaa; }
+
+    /* ── compat warning ── */
+    .warn {
+      background: #1a1500;
+      border-bottom: 1px solid #3a3000;
+      padding: 8px 24px;
+      font-size: 0.78rem;
+      color: #aa9900;
+      display: none;
+    }
+    .warn.show { display: block; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>WiSense <span>/ CSI Dashboard</span></h1>
+  <div class="top-right">
+    <span id="connLabel">● Disconnected</span>
+    <button id="simBtn">Simulate</button>
+    <button id="connectBtn">Connect to ESP32</button>
+  </div>
+</header>
+
+<div id="warnBanner" class="warn">
+  Web Serial not supported here — use Chrome or Edge (v89+). Simulate still works.
+</div>
+
+<main>
+
+  <div id="statusCol" class="status-col waiting">
+    <div class="status-label">Occupancy</div>
+    <div class="status-box">
+      <div id="statusText" class="status-text">—</div>
+    </div>
+    <div class="status-dot"></div>
+  </div>
+
+  <div class="chart-col">
+    <div class="chart-top">
+      <span>Mean CSI Amplitude</span>
+      <span>last 60 readings · 2 Hz</span>
+    </div>
+    <div class="chart-wrap">
+      <canvas id="chart"></canvas>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  <div class="stat">
+    <div class="stat-name">Amplitude</div>
+    <div class="stat-val" id="sAmp">—</div>
+  </div>
+  <div class="stat">
+    <div class="stat-name">Mean</div>
+    <div class="stat-val" id="sMean">—</div>
+  </div>
+  <div class="stat">
+    <div class="stat-name">Variance</div>
+    <div class="stat-val" id="sVar">—</div>
+  </div>
+  <div class="stat">
+    <div class="stat-name">Std Dev</div>
+    <div class="stat-val" id="sStd">—</div>
+  </div>
+  <div class="stat">
+    <div class="stat-name">Threshold</div>
+    <div class="stat-val">150 / 600</div>
+  </div>
+  <div class="stat">
+    <div class="stat-name">Lines Rx</div>
+    <div class="stat-val" id="sPkts">0</div>
+  </div>
+</footer>
+
+<script>
+// ── chart ──────────────────────────────────────────────────────────────────────
+const MAX = 60;
+const labels = [], data = [];
+
+const chart = new Chart(document.getElementById('chart'), {
+  type: 'line',
+  data: {
+    labels,
+    datasets: [{
+      data,
+      borderColor: '#4a7fbf',
+      backgroundColor: 'rgba(74,127,191,0.06)',
+      fill: true,
+      tension: 0.35,
+      pointRadius: 0,
+      borderWidth: 1.5,
+    }]
+  },
+  options: {
+    animation: false,
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: { mode: 'none' },
+    scales: {
+      x: { display: false },
+      y: {
+        min: 0, max: 120,
+        grid:   { color: '#1e1e1e' },
+        border: { color: '#2a2a2a' },
+        ticks:  { color: '#444', font: { size: 10 }, stepSize: 20 },
+        title:  { display: true, text: 'amplitude', color: '#333', font: { size: 9 } },
+      }
+    },
+    plugins: { legend: { display: false } }
+  }
+});
+
+function pushPoint(mean) {
+  labels.push('');
+  data.push(mean);
+  if (labels.length > MAX) { labels.shift(); data.shift(); }
+  chart.update('none');
+}
+
+// ── UI ─────────────────────────────────────────────────────────────────────────
+let totalLines = 0;
+
+function setStatus(status) {
+  const col  = document.getElementById('statusCol');
+  const text = document.getElementById('statusText');
+
+  col.className = 'status-col';
+
+  if (status === 'Occupied') {
+    col.classList.add('occupied');
+    text.textContent = 'OCCUPIED';
+    text.style.whiteSpace = '';
+  } else if (status === 'Not Occupied') {
+    col.classList.add('clear');
+    text.textContent = 'NOT\nOCCUPIED';
+    text.style.whiteSpace = 'pre';
+  } else if (status === 'Calibrating') {
+    col.classList.add('calibrating');
+    text.textContent = 'Calibrating…';
+    text.style.whiteSpace = '';
+  } else {
+    col.classList.add('waiting');
+    text.textContent = '—';
+    text.style.whiteSpace = '';
+  }
+}
+
+function setConnLabel(text, cls) {
+  const el = document.getElementById('connLabel');
+  el.textContent = '● ' + text;
+  el.className = cls || '';
+}
+
+function updateStats({ amp, mean, variance, std }) {
+  totalLines++;
+  document.getElementById('sAmp').textContent  = amp.toFixed(1);
+  document.getElementById('sMean').textContent = mean.toFixed(1);
+  document.getElementById('sVar').textContent  = variance.toFixed(1);
+  document.getElementById('sStd').textContent  = std.toFixed(2);
+  document.getElementById('sPkts').textContent = totalLines.toLocaleString();
+  ['sAmp','sMean','sVar','sStd','sPkts'].forEach(id => {
+    document.getElementById(id).className = 'stat-val lit';
+  });
+}
+
+function resetStats() {
+  ['sAmp','sMean','sVar','sStd'].forEach(id => {
+    document.getElementById(id).textContent = '—';
+    document.getElementById(id).className = 'stat-val';
+  });
+  document.getElementById('sPkts').textContent = '0';
+}
+
+// ── parser ─────────────────────────────────────────────────────────────────────
+// DATA,timestamp_ms,csi_amp,csi_mean,csi_variance,csi_std,status
+function parseLine(line) {
+  if (!line.startsWith('DATA,')) return null;
+  const p = line.split(',');
+  if (p.length < 7) return null;
+  return {
+    amp:      parseFloat(p[2]),
+    mean:     parseFloat(p[3]),
+    variance: parseFloat(p[4]),
+    std:      parseFloat(p[5]),
+    status:   p.slice(6).join(',').trim(),
+  };
+}
+
+function handle(parsed) {
+  if (!parsed) return;
+  if (parsed.mean > 0) pushPoint(parsed.mean);
+  updateStats(parsed);
+  setStatus(parsed.status);
+}
+
+// ── simulation ─────────────────────────────────────────────────────────────────
+const SIM_WIN = 20;
+let simTimer = null, simTick = 0, simAmps = [];
+
+function simPhase(t) {
+  if (t < 10) return { base: 45, noise: 2 };
+  return (t - 10) % 100 < 50
+    ? { base: 46, noise: 9  }
+    : { base: 40, noise: 35 };
+}
+
+function simStep() {
+  simTick++;
+  const { base, noise } = simPhase(simTick);
+  const amp = base + (Math.random() * 2 - 1) * noise;
+  simAmps.push(amp);
+  if (simAmps.length > SIM_WIN) simAmps.shift();
+  const n    = simAmps.length;
+  const mean = simAmps.reduce((s, v) => s + v, 0) / n;
+  const variance = simAmps.reduce((s, v) => s + (v - mean) ** 2, 0) / n;
+  handle({
+    amp, mean, variance,
+    std: Math.sqrt(variance),
+    status: n < 10 ? 'Calibrating' : variance < 150 ? 'Not Occupied' : 'Occupied',
+  });
+}
+
+document.getElementById('simBtn').addEventListener('click', () => {
+  if (simTimer) {
+    clearInterval(simTimer); simTimer = null;
+    document.getElementById('simBtn').textContent = 'Simulate';
+    document.getElementById('simBtn').className = '';
+    document.getElementById('connectBtn').disabled = !('serial' in navigator);
+    setConnLabel('Disconnected'); setStatus(null); resetStats();
+  } else {
+    simTick = 0; simAmps = []; totalLines = 0;
+    document.getElementById('simBtn').textContent = 'Stop Sim';
+    document.getElementById('simBtn').className = 'active';
+    document.getElementById('connectBtn').disabled = true;
+    setConnLabel('Simulating', 'sim');
+    simTimer = setInterval(simStep, 500);
+  }
+});
+
+// ── web serial ─────────────────────────────────────────────────────────────────
+if (!('serial' in navigator)) {
+  document.getElementById('warnBanner').classList.add('show');
+  document.getElementById('connectBtn').disabled = true;
+}
+
+let port = null, reader = null;
+
+document.getElementById('connectBtn').addEventListener('click', async () => {
+  port ? await doDisconnect() : await doConnect();
+});
+
+async function doConnect() {
+  try {
+    port = await navigator.serial.requestPort();
+    await port.open({ baudRate: 115200 });
+    totalLines = 0;
+    setConnLabel('Connected', 'on');
+    document.getElementById('connectBtn').textContent = 'Disconnect';
+    document.getElementById('simBtn').disabled = true;
+    readLoop();
+  } catch (e) {
+    port = null;
+    if (e.name !== 'AbortError') alert('Could not open port: ' + e.message);
+  }
+}
+
+async function doDisconnect() {
+  if (reader) { try { await reader.cancel(); } catch (_) {} reader = null; }
+  if (port)   { try { await port.close();    } catch (_) {} port   = null; }
+  setConnLabel('Disconnected'); setStatus(null); resetStats();
+  document.getElementById('connectBtn').textContent = 'Connect to ESP32';
+  document.getElementById('simBtn').disabled = false;
+}
+
+async function readLoop() {
+  const dec = new TextDecoderStream();
+  port.readable.pipeTo(dec.writable);
+  reader = dec.readable.getReader();
+  let buf = '';
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += value;
+      const lines = buf.split('\n');
+      buf = lines.pop();
+      for (const l of lines) handle(parseLine(l.trim()));
+    }
+  } catch (e) {
+    if (e.name !== 'AbortError') { console.error(e); doDisconnect(); }
+  } finally { try { reader.releaseLock(); } catch (_) {} }
+}
+</script>
+</body>
+</html>
