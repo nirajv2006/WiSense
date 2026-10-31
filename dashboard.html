@@ -4,235 +4,452 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>WiSense Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #07070e;
+      --surface:   #0e0e1c;
+      --surface2:  #13132a;
+      --border:    #1c1c38;
+      --text:      #ddddf5;
+      --muted:     #5a5a80;
+      --accent:    #7b8de8;
+
+      --green:     #3ddc84;
+      --green-dim: #1a4a30;
+      --green-bg:  radial-gradient(ellipse at 50% 60%, #051a0f 0%, #07070e 70%);
+
+      --red:       #f06060;
+      --red-dim:   #4a1515;
+      --red-bg:    radial-gradient(ellipse at 50% 60%, #1a0505 0%, #07070e 70%);
+
+      --blue:      #5b9cf6;
+      --blue-dim:  #1a2a50;
+      --blue-bg:   radial-gradient(ellipse at 50% 60%, #080820 0%, #07070e 70%);
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+    }
 
     body {
-      background: #111;
-      color: #ccc;
-      font-family: 'Segoe UI', sans-serif;
-      height: 100vh;
       display: flex;
       flex-direction: column;
     }
 
-    /* ── top bar ── */
+    /* ── header ──────────────────────────────────────────────────────────── */
     header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 14px 24px;
-      border-bottom: 1px solid #222;
+      padding: 0 28px;
+      height: 56px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      flex-shrink: 0;
+      gap: 16px;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo-icon {
+      width: 28px;
+      height: 28px;
+      background: var(--accent);
+      border-radius: 7px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+    }
+
+    .logo h1 {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: -0.2px;
+    }
+
+    .logo span {
+      font-weight: 400;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .conn-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.78rem;
+      color: var(--muted);
+      padding: 0 4px;
+    }
+
+    .conn-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--muted);
       flex-shrink: 0;
     }
 
-    header h1 {
-      font-size: 1rem;
-      font-weight: 600;
-      color: #fff;
-      letter-spacing: 0.3px;
-    }
+    .conn-badge.on   { color: var(--green); }
+    .conn-badge.on   .conn-dot { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    .conn-badge.sim  { color: var(--accent); }
+    .conn-badge.sim  .conn-dot { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
 
-    header h1 span { color: #555; font-weight: 400; }
-
-    .top-right {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-    }
-
-    #connLabel {
+    .btn {
+      padding: 7px 16px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
       font-size: 0.8rem;
-      color: #555;
-    }
-    #connLabel.on  { color: #5c5; }
-    #connLabel.sim { color: #88f; }
-
-    button {
-      padding: 6px 16px;
-      border-radius: 5px;
-      border: 1px solid #333;
-      background: #1e1e1e;
-      color: #ccc;
-      font-size: 0.82rem;
+      font-weight: 500;
       cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
     }
-    button:hover { background: #282828; }
-    button:disabled { opacity: 0.35; cursor: default; }
-    button.active { border-color: #555; color: #fff; }
+    .btn:hover { background: #1a1a35; border-color: #2a2a50; }
+    .btn:disabled { opacity: 0.3; cursor: default; }
 
-    /* ── main area ── */
+    .btn-primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+    .btn-primary:hover { background: #8fa0f0; }
+
+    .btn-danger {
+      background: #2a0a0a;
+      border-color: #5a1a1a;
+      color: var(--red);
+    }
+    .btn-danger:hover { background: #350d0d; }
+
+    /* ── compat warning ───────────────────────────────────────────────────── */
+    .warn {
+      background: #14100a;
+      border-bottom: 1px solid #2a2010;
+      padding: 8px 28px;
+      font-size: 0.78rem;
+      color: #c0a040;
+      display: none;
+    }
+    .warn.show { display: block; }
+
+    /* ── main grid ────────────────────────────────────────────────────────── */
     main {
       flex: 1;
       display: grid;
-      grid-template-columns: 240px 1fr;
+      grid-template-columns: 270px 1fr;
       min-height: 0;
     }
 
-    /* ── left: status ── */
-    .status-col {
+    /* ── left: status panel ───────────────────────────────────────────────── */
+    .status-panel {
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      border-right: 1px solid #222;
-      padding: 24px 16px;
-      gap: 12px;
-      transition: background 0.4s;
+      padding: 32px 20px;
+      border-right: 1px solid var(--border);
+      gap: 20px;
+      background: var(--bg);
+      transition: background 0.6s ease;
+      position: relative;
+      overflow: hidden;
     }
 
-    .status-col.waiting     { background: #111; }
-    .status-col.calibrating { background: #111; }
-    .status-col.occupied    { background: #1c0a0a; }
-    .status-col.clear       { background: #0a150a; }
+    .status-panel::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      transition: opacity 0.6s ease;
+      pointer-events: none;
+    }
 
-    .status-label {
-      font-size: 0.65rem;
-      letter-spacing: 2px;
+    .status-panel.occ-clear::before   { background: var(--green-bg); opacity: 1; }
+    .status-panel.occ-occupied::before{ background: var(--red-bg);   opacity: 1; }
+    .status-panel.occ-cal::before     { background: var(--blue-bg);  opacity: 1; }
+
+    .status-eyebrow {
+      font-size: 0.62rem;
+      letter-spacing: 3px;
       text-transform: uppercase;
-      color: #444;
+      color: var(--muted);
+      font-weight: 600;
+      position: relative;
     }
 
-    .status-box {
+    .status-card {
       width: 100%;
-      padding: 20px 12px;
-      border-radius: 6px;
-      text-align: center;
-      background: #1a1a1a;
-      border: 1px solid #2a2a2a;
-      transition: background 0.3s, border-color 0.3s;
-    }
-
-    .status-col.occupied .status-box {
-      background: #3a0909;
-      border-color: #7a1010;
-    }
-    .status-col.clear .status-box {
-      background: #0a2a0a;
-      border-color: #1a6a1a;
-    }
-    .status-col.calibrating .status-box {
-      background: #0d0d22;
-      border-color: #2a2a55;
-    }
-
-    .status-text {
-      font-size: 1.5rem;
-      font-weight: 700;
-      color: #444;
-      line-height: 1.3;
-      white-space: pre;
-    }
-    .status-col.occupied    .status-text { color: #e05555; }
-    .status-col.clear       .status-text { color: #55cc55; }
-    .status-col.calibrating .status-text { color: #7788ee; font-size: 1rem; font-weight: 500; }
-
-    .status-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: #333;
-      margin-top: 4px;
-    }
-    .status-col.occupied    .status-dot { background: #e05555; }
-    .status-col.clear       .status-dot { background: #55cc55; }
-    .status-col.calibrating .status-dot { background: #7788ee; }
-
-    /* ── right: chart ── */
-    .chart-col {
+      padding: 28px 16px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.02);
       display: flex;
       flex-direction: column;
-      padding: 20px 22px 14px;
-      gap: 10px;
+      align-items: center;
+      gap: 14px;
+      position: relative;
+      transition: border-color 0.4s, background 0.4s;
     }
 
-    .chart-top {
+    .status-panel.occ-occupied .status-card {
+      border-color: var(--red-dim);
+      background: rgba(240,96,96,0.04);
+    }
+    .status-panel.occ-clear .status-card {
+      border-color: var(--green-dim);
+      background: rgba(61,220,132,0.04);
+    }
+    .status-panel.occ-cal .status-card {
+      border-color: var(--blue-dim);
+      background: rgba(91,156,246,0.04);
+    }
+
+    .status-icon {
+      font-size: 2.6rem;
+      line-height: 1;
+      filter: grayscale(1);
+      transition: filter 0.4s;
+    }
+    .status-panel.occ-occupied .status-icon { filter: grayscale(0); }
+    .status-panel.occ-clear    .status-icon { filter: grayscale(0); }
+    .status-panel.occ-cal      .status-icon { filter: grayscale(0); }
+
+    .status-text {
+      font-size: 1.8rem;
+      font-weight: 800;
+      letter-spacing: 1px;
+      text-align: center;
+      line-height: 1.2;
+      color: var(--muted);
+      white-space: pre;
+      transition: color 0.4s;
+    }
+    .status-panel.occ-occupied .status-text { color: var(--red); }
+    .status-panel.occ-clear    .status-text { color: var(--green); }
+    .status-panel.occ-cal      .status-text { color: var(--accent); font-size: 1.1rem; font-weight: 600; }
+
+    .status-ring {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: border-color 0.4s;
+    }
+    .status-ring-inner {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--muted);
+      transition: background 0.4s, box-shadow 0.4s;
+    }
+
+    .status-panel.occ-occupied .status-ring { border-color: var(--red-dim); }
+    .status-panel.occ-occupied .status-ring-inner {
+      background: var(--red);
+      box-shadow: 0 0 10px var(--red);
+      animation: pulse-dot 1.4s ease-in-out infinite;
+    }
+
+    .status-panel.occ-clear .status-ring { border-color: var(--green-dim); }
+    .status-panel.occ-clear .status-ring-inner {
+      background: var(--green);
+      box-shadow: 0 0 10px var(--green);
+    }
+
+    .status-panel.occ-cal .status-ring { border-color: var(--blue-dim); }
+    .status-panel.occ-cal .status-ring-inner {
+      background: var(--accent);
+      animation: pulse-dot 1s ease-in-out infinite;
+    }
+
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.4; transform: scale(0.8); }
+    }
+
+    /* variance bar */
+    .var-bar-wrap {
+      width: 100%;
+      position: relative;
+    }
+
+    .var-bar-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.65rem;
+      color: var(--muted);
+      margin-bottom: 5px;
+    }
+
+    .var-bar-track {
+      height: 4px;
+      border-radius: 2px;
+      background: var(--surface2);
+      overflow: hidden;
+    }
+
+    .var-bar-fill {
+      height: 100%;
+      border-radius: 2px;
+      background: var(--accent);
+      width: 0%;
+      transition: width 0.5s ease, background 0.4s;
+    }
+
+    /* ── right: chart panel ───────────────────────────────────────────────── */
+    .chart-panel {
+      display: flex;
+      flex-direction: column;
+      padding: 22px 26px 18px;
+      gap: 14px;
+    }
+
+    .chart-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
     }
 
-    .chart-top span {
-      font-size: 0.75rem;
-      color: #444;
+    .chart-title {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text);
+      letter-spacing: -0.1px;
+    }
+
+    .chart-meta {
+      font-size: 0.7rem;
+      color: var(--muted);
     }
 
     .chart-wrap {
       flex: 1;
       position: relative;
       min-height: 0;
+      border-radius: 10px;
+      overflow: hidden;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 14px 14px 8px;
     }
 
-    /* ── stats bar ── */
+    /* ── stats bar ────────────────────────────────────────────────────────── */
     footer {
-      border-top: 1px solid #222;
-      padding: 10px 24px;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+      padding: 12px 28px;
       display: flex;
-      gap: 36px;
+      gap: 0;
       flex-shrink: 0;
-      flex-wrap: wrap;
     }
 
-    .stat { display: flex; flex-direction: column; gap: 2px; }
+    .stat {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      padding: 0 20px 0 0;
+      border-right: 1px solid var(--border);
+      margin-right: 20px;
+    }
+    .stat:last-child { border-right: none; margin-right: 0; }
 
     .stat-name {
-      font-size: 0.62rem;
+      font-size: 0.6rem;
       text-transform: uppercase;
-      letter-spacing: 1px;
-      color: #444;
+      letter-spacing: 1.5px;
+      color: var(--muted);
+      font-weight: 600;
     }
 
     .stat-val {
-      font-size: 1rem;
-      font-weight: 600;
-      font-family: 'Courier New', monospace;
-      color: #777;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+      transition: color 0.3s;
     }
-
-    .stat-val.lit { color: #aaa; }
-
-    /* ── compat warning ── */
-    .warn {
-      background: #1a1500;
-      border-bottom: 1px solid #3a3000;
-      padding: 8px 24px;
-      font-size: 0.78rem;
-      color: #aa9900;
-      display: none;
-    }
-    .warn.show { display: block; }
+    .stat-val.lit { color: var(--text); }
   </style>
 </head>
 <body>
 
 <header>
-  <h1>WiSense <span>/ CSI Dashboard</span></h1>
-  <div class="top-right">
-    <span id="connLabel">● Disconnected</span>
-    <button id="simBtn">Simulate</button>
-    <button id="connectBtn">Connect to ESP32</button>
+  <div class="logo">
+    <div class="logo-icon">📡</div>
+    <h1>WiSense <span>/ CSI Dashboard</span></h1>
+  </div>
+  <div class="header-right">
+    <div id="connBadge" class="conn-badge">
+      <span class="conn-dot"></span>
+      <span id="connText">Disconnected</span>
+    </div>
+    <button class="btn" id="simBtn">Simulate</button>
+    <button class="btn btn-primary" id="connectBtn">Connect to ESP32</button>
   </div>
 </header>
 
 <div id="warnBanner" class="warn">
-  Web Serial not supported here — use Chrome or Edge (v89+). Simulate still works.
+  ⚠ Web Serial API not available — use Chrome or Edge (v89+). Simulate works in any browser.
 </div>
 
 <main>
 
-  <div id="statusCol" class="status-col waiting">
-    <div class="status-label">Occupancy</div>
-    <div class="status-box">
+  <!-- Left: occupancy status -->
+  <div id="statusPanel" class="status-panel">
+    <div class="status-eyebrow">Occupancy Status</div>
+
+    <div class="status-card">
+      <div id="statusIcon" class="status-icon">📡</div>
       <div id="statusText" class="status-text">—</div>
+      <div class="status-ring">
+        <div class="status-ring-inner"></div>
+      </div>
     </div>
-    <div class="status-dot"></div>
+
+    <div class="var-bar-wrap">
+      <div class="var-bar-label">
+        <span>Variance</span>
+        <span id="varNum">—</span>
+      </div>
+      <div class="var-bar-track">
+        <div id="varBarFill" class="var-bar-fill"></div>
+      </div>
+    </div>
   </div>
 
-  <div class="chart-col">
-    <div class="chart-top">
-      <span>Mean CSI Amplitude</span>
-      <span>last 60 readings · 2 Hz</span>
+  <!-- Right: chart -->
+  <div class="chart-panel">
+    <div class="chart-header">
+      <div class="chart-title">Mean CSI Amplitude over Time</div>
+      <div class="chart-meta">last 60 readings · 2 Hz</div>
     </div>
     <div class="chart-wrap">
       <canvas id="chart"></canvas>
@@ -260,7 +477,7 @@
   </div>
   <div class="stat">
     <div class="stat-name">Threshold</div>
-    <div class="stat-val">150 / 600</div>
+    <div class="stat-val lit">150 / 600</div>
   </div>
   <div class="stat">
     <div class="stat-name">Lines Rx</div>
@@ -271,20 +488,29 @@
 <script>
 // ── chart ──────────────────────────────────────────────────────────────────────
 const MAX = 60;
-const labels = [], data = [];
+const cLabels = [], cData = [];
+
+const gradient = (() => {
+  const canvas = document.getElementById('chart');
+  const ctx = canvas.getContext('2d');
+  const g = ctx.createLinearGradient(0, 0, 0, 300);
+  g.addColorStop(0,   'rgba(91,156,246,0.3)');
+  g.addColorStop(1,   'rgba(91,156,246,0)');
+  return g;
+})();
 
 const chart = new Chart(document.getElementById('chart'), {
   type: 'line',
   data: {
-    labels,
+    labels: cLabels,
     datasets: [{
-      data,
-      borderColor: '#4a7fbf',
-      backgroundColor: 'rgba(74,127,191,0.06)',
+      data: cData,
+      borderColor: '#5b9cf6',
+      backgroundColor: gradient,
       fill: true,
-      tension: 0.35,
+      tension: 0.4,
       pointRadius: 0,
-      borderWidth: 1.5,
+      borderWidth: 2,
     }]
   },
   options: {
@@ -296,10 +522,9 @@ const chart = new Chart(document.getElementById('chart'), {
       x: { display: false },
       y: {
         min: 0, max: 120,
-        grid:   { color: '#1e1e1e' },
-        border: { color: '#2a2a2a' },
-        ticks:  { color: '#444', font: { size: 10 }, stepSize: 20 },
-        title:  { display: true, text: 'amplitude', color: '#333', font: { size: 9 } },
+        grid:   { color: 'rgba(255,255,255,0.03)' },
+        border: { color: 'transparent' },
+        ticks:  { color: '#3a3a60', font: { size: 10 }, stepSize: 20 },
       }
     },
     plugins: { legend: { display: false } }
@@ -307,9 +532,9 @@ const chart = new Chart(document.getElementById('chart'), {
 });
 
 function pushPoint(mean) {
-  labels.push('');
-  data.push(mean);
-  if (labels.length > MAX) { labels.shift(); data.shift(); }
+  cLabels.push('');
+  cData.push(mean);
+  if (cLabels.length > MAX) { cLabels.shift(); cData.shift(); }
   chart.update('none');
 }
 
@@ -317,34 +542,47 @@ function pushPoint(mean) {
 let totalLines = 0;
 
 function setStatus(status) {
-  const col  = document.getElementById('statusCol');
-  const text = document.getElementById('statusText');
+  const panel = document.getElementById('statusPanel');
+  const text  = document.getElementById('statusText');
+  const icon  = document.getElementById('statusIcon');
 
-  col.className = 'status-col';
+  panel.className = 'status-panel';
 
   if (status === 'Occupied') {
-    col.classList.add('occupied');
-    text.textContent = 'OCCUPIED';
+    panel.classList.add('occ-occupied');
+    icon.textContent  = '🔴';
+    text.textContent  = 'OCCUPIED';
     text.style.whiteSpace = '';
   } else if (status === 'Not Occupied') {
-    col.classList.add('clear');
-    text.textContent = 'NOT\nOCCUPIED';
+    panel.classList.add('occ-clear');
+    icon.textContent  = '🟢';
+    text.textContent  = 'NOT\nOCCUPIED';
     text.style.whiteSpace = 'pre';
   } else if (status === 'Calibrating') {
-    col.classList.add('calibrating');
-    text.textContent = 'Calibrating…';
+    panel.classList.add('occ-cal');
+    icon.textContent  = '📡';
+    text.textContent  = 'Calibrating…';
     text.style.whiteSpace = '';
   } else {
-    col.classList.add('waiting');
-    text.textContent = '—';
+    icon.textContent  = '📡';
+    text.textContent  = '—';
     text.style.whiteSpace = '';
   }
 }
 
-function setConnLabel(text, cls) {
-  const el = document.getElementById('connLabel');
-  el.textContent = '● ' + text;
-  el.className = cls || '';
+function setConn(text, cls) {
+  const badge = document.getElementById('connBadge');
+  badge.className = 'conn-badge' + (cls ? ' ' + cls : '');
+  document.getElementById('connText').textContent = text;
+}
+
+function updateVarianceBar(variance) {
+  const fill = document.getElementById('varBarFill');
+  const num  = document.getElementById('varNum');
+  const pct  = Math.min(100, (variance / 800) * 100);
+  fill.style.width = pct + '%';
+  fill.style.background = variance < 150 ? '#3ddc84' : variance > 600 ? '#f06060' : '#f0a060';
+  num.textContent = variance.toFixed(0);
 }
 
 function updateStats({ amp, mean, variance, std }) {
@@ -354,21 +592,24 @@ function updateStats({ amp, mean, variance, std }) {
   document.getElementById('sVar').textContent  = variance.toFixed(1);
   document.getElementById('sStd').textContent  = std.toFixed(2);
   document.getElementById('sPkts').textContent = totalLines.toLocaleString();
-  ['sAmp','sMean','sVar','sStd','sPkts'].forEach(id => {
-    document.getElementById(id).className = 'stat-val lit';
-  });
+  ['sAmp','sMean','sVar','sStd','sPkts'].forEach(id =>
+    document.getElementById(id).className = 'stat-val lit');
+  updateVarianceBar(variance);
 }
 
-function resetStats() {
+function resetUI() {
+  setStatus(null);
+  setConn('Disconnected');
   ['sAmp','sMean','sVar','sStd'].forEach(id => {
     document.getElementById(id).textContent = '—';
     document.getElementById(id).className = 'stat-val';
   });
   document.getElementById('sPkts').textContent = '0';
+  document.getElementById('varNum').textContent = '—';
+  document.getElementById('varBarFill').style.width = '0%';
 }
 
 // ── parser ─────────────────────────────────────────────────────────────────────
-// DATA,timestamp_ms,csi_amp,csi_mean,csi_variance,csi_std,status
 function parseLine(line) {
   if (!line.startsWith('DATA,')) return null;
   const p = line.split(',');
@@ -395,9 +636,7 @@ let simTimer = null, simTick = 0, simAmps = [];
 
 function simPhase(t) {
   if (t < 10) return { base: 45, noise: 2 };
-  return (t - 10) % 100 < 50
-    ? { base: 46, noise: 9  }
-    : { base: 40, noise: 35 };
+  return (t - 10) % 100 < 50 ? { base: 46, noise: 9 } : { base: 40, noise: 35 };
 }
 
 function simStep() {
@@ -406,7 +645,7 @@ function simStep() {
   const amp = base + (Math.random() * 2 - 1) * noise;
   simAmps.push(amp);
   if (simAmps.length > SIM_WIN) simAmps.shift();
-  const n    = simAmps.length;
+  const n   = simAmps.length;
   const mean = simAmps.reduce((s, v) => s + v, 0) / n;
   const variance = simAmps.reduce((s, v) => s + (v - mean) ** 2, 0) / n;
   handle({
@@ -420,15 +659,15 @@ document.getElementById('simBtn').addEventListener('click', () => {
   if (simTimer) {
     clearInterval(simTimer); simTimer = null;
     document.getElementById('simBtn').textContent = 'Simulate';
-    document.getElementById('simBtn').className = '';
+    document.getElementById('simBtn').className = 'btn';
     document.getElementById('connectBtn').disabled = !('serial' in navigator);
-    setConnLabel('Disconnected'); setStatus(null); resetStats();
+    resetUI();
   } else {
     simTick = 0; simAmps = []; totalLines = 0;
     document.getElementById('simBtn').textContent = 'Stop Sim';
-    document.getElementById('simBtn').className = 'active';
+    document.getElementById('simBtn').className = 'btn btn-danger';
     document.getElementById('connectBtn').disabled = true;
-    setConnLabel('Simulating', 'sim');
+    setConn('Simulating', 'sim');
     simTimer = setInterval(simStep, 500);
   }
 });
@@ -450,8 +689,9 @@ async function doConnect() {
     port = await navigator.serial.requestPort();
     await port.open({ baudRate: 115200 });
     totalLines = 0;
-    setConnLabel('Connected', 'on');
+    setConn('Connected', 'on');
     document.getElementById('connectBtn').textContent = 'Disconnect';
+    document.getElementById('connectBtn').className = 'btn btn-danger';
     document.getElementById('simBtn').disabled = true;
     readLoop();
   } catch (e) {
@@ -463,8 +703,9 @@ async function doConnect() {
 async function doDisconnect() {
   if (reader) { try { await reader.cancel(); } catch (_) {} reader = null; }
   if (port)   { try { await port.close();    } catch (_) {} port   = null; }
-  setConnLabel('Disconnected'); setStatus(null); resetStats();
+  resetUI();
   document.getElementById('connectBtn').textContent = 'Connect to ESP32';
+  document.getElementById('connectBtn').className = 'btn btn-primary';
   document.getElementById('simBtn').disabled = false;
 }
 
