@@ -13,24 +13,39 @@ typedef struct {
     OccupancyState state;
     CSIFeatures    features;
     unsigned long  timestamp;
+    bool           isOccupied;
+    float          diffAmp;
+    float          varThreshold;
+    float          ampThreshold;
 } ClassificationResult;
-
-// Variance of mean CSI amplitude over the sliding window.
-// Tune these for your environment using the serial CSV data.
-#define VARIANCE_THRESHOLD_LOW  150.0f   // below → Empty (Not Occupied)
-#define VARIANCE_THRESHOLD_HIGH 600.0f   // above → High Activity (Occupied)
 
 class Classifier {
 public:
     Classifier();
 
+    void calibrateBaseline(float baselineAmp, float baselineVar = 1.0f, float baselineStd = 1.0f);
+    bool hasBaseline() const { return baselineCalibrated; }
+    float getBaseline() const { return baselineMeanAmp; }
+    float getBaselineVar() const { return baselineVariance; }
+    float getMotionThreshold() const { return motionVarianceThreshold; }
+    float getAmpThreshold() const { return ampDeviationThreshold; }
+
     ClassificationResult classify(CSIFeatures features);
     const char* getStateName(OccupancyState state);
-    void setThresholds(float varLow, float varHigh);
+    void setThresholds(float varMotion, float ampDeviation);
 
 private:
-    float varianceThresholdLow;
-    float varianceThresholdHigh;
+    float motionVarianceThreshold;
+    float ampDeviationThreshold;
+    float baselineMeanAmp;
+    float baselineVariance;
+    bool  baselineCalibrated;
+
+    // Hysteresis & debouncing
+    int   occupiedConsecutive;
+    int   emptyConsecutive;
+    bool  currentlyOccupied;
+    unsigned long lastOccupiedTime;
 };
 
 #endif

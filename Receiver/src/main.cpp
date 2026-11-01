@@ -37,22 +37,24 @@ unsigned long lastFeatureUpdate = 0;
 unsigned long lastSerialUpdate  = 0;
 unsigned long lastOledUpdate    = 0;
 
-#define FEATURE_UPDATE_MS  1000   // re-classify every 1 s for responsive sensing
-#define SERIAL_UPDATE_MS    500   // CSV serial output at 2 Hz
-#define OLED_UPDATE_MS      500   // OLED refresh at 2 Hz
+#define FEATURE_UPDATE_MS   250   // evaluate state 4 times a second
+#define SERIAL_UPDATE_MS    500   // CSV & debug serial output at 2 Hz
+#define OLED_UPDATE_MS      250   // OLED refresh at 4 Hz
 
 // ─── Shared state between CSI callback and main loop ─────────────────────────
 static volatile float s_latestAmp = 0.0f;
 static volatile bool  s_newSample = false;
-static volatile unsigned long s_csiRawCount = 0;
 
 // ─── Application state ────────────────────────────────────────────────────────
-bool        calibrating  = true;
-bool        occupied     = false;
-CSIFeatures lastFeatures = {};
+bool                 calibrating  = true;
+bool                 occupied     = false;
+CSIFeatures          lastFeatures = {};
+ClassificationResult lastResult   = {};
+
+// Calibration accumulator
+int calibrationSamples = 0;
 
 // ─── CSI callback ─────────────────────────────────────────────────────────────
-// Called from the Wi-Fi driver task each time a frame with CSI data arrives.
 static void csiCallback(void* /*ctx*/, wifi_csi_info_t* info) {
     if (!info || !info->buf || info->len < 4) return;
 
@@ -73,7 +75,6 @@ static void csiCallback(void* /*ctx*/, wifi_csi_info_t* info) {
     if (cnt > 0) {
         s_latestAmp = sum / (float)cnt;
         s_newSample = true;
-        s_csiRawCount++;
     }
 }
 
@@ -91,22 +92,27 @@ void updateOled() {
 
     display.setTextSize(2);
     if (calibrating) {
-        display.setCursor(16, 24);
-        display.print("SCANNING");
+        display.setCursor(16, 22);
+        display.print("CALIBRATING");
     } else if (occupied) {
-        display.setCursor(16, 24);
+        display.setCursor(16, 22);
         display.print("OCCUPIED");
     } else {
-        display.setCursor(46, 15);
+        display.setCursor(46, 14);
         display.print("NOT");
-        display.setCursor(16, 33);
+        display.setCursor(16, 30);
         display.print("OCCUPIED");
     }
 
     display.setTextSize(1);
-    char buf[24];
-    snprintf(buf, sizeof(buf), "A:%4.1f V:%4.0f P:%lu",
-             lastFeatures.currentAmp, lastFeatures.ampVariance, packetCount);
+    char buf[26];
+    if (calibrating) {
+        snprintf(buf, sizeof(buf), "Calib: %d/60 pkts", calibrationSamples);
+    } else {
+        snprintf(buf, sizeof(buf), "V:%3.1f/%3.1f D:%3.1f/%3.1f",
+                 lastFeatures.ampVariance, classifier.getMotionThreshold(),
+                 lastResult.diffAmp, classifier.getAmpThreshold());
+    }
     display.setCursor(0, 54);
     display.print(buf);
 
@@ -117,14 +123,13 @@ void updateOled() {
 void setup() {
     Serial.begin(115200);
     delay(1000);
-
     Serial.println(F("\n# WiSense Booting..."));
 
-    // Initialize I2C on standard SDA=21, SCL=22
+    // Initialize I2C on SDA=21, SCL=22
     Wire.begin(21, 22);
     delay(100);
 
-    // Try standard OLED address 0x3C first, then 0x3D
+    // OLED init
     if (display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
         displayAvailable = true;
         Serial.println(F("# OLED found at 0x3C"));
@@ -132,7 +137,7 @@ void setup() {
         displayAvailable = true;
         Serial.println(F("# OLED found at 0x3D"));
     } else {
-        Serial.println(F("# OLED not detected at 0x3C or 0x3D (Check wiring: SDA->21, SCL->22, VCC, GND)"));
+        Serial.println(F("# OLED not detected"));
     }
 
     if (displayAvailable) {
@@ -142,90 +147,109 @@ void setup() {
         display.setCursor(10, 20);
         display.println(F("WiSense Starting"));
         display.setCursor(10, 35);
-        display.println(F("Connecting..."));
+        display.println(F("Calibrating empty..."));
         display.display();
     }
 
     // Start access point
     WiFi.mode(WIFI_AP);
     WiFi.softAP(ssid, password);
-    delay(300);   // allow AP to stabilize
+    delay(300);
 
-    // 1. Enable Promiscuous / Monitor mode (required for ESP32 CSI hardware capture)
+    // Enable Promiscuous & CSI
     esp_wifi_set_promiscuous(true);
 
-    // 2. Configure CSI settings (enable both LLTF and HTLTF so 802.11n frames are captured)
     wifi_csi_config_t csi_cfg = {};
-    csi_cfg.lltf_en          = true;  // legacy LTF subcarriers
-    csi_cfg.htltf_en         = true;  // 802.11n HT-LTF subcarriers
-    csi_cfg.stbc_htltf2_en   = true;
-    csi_cfg.ltf_merge_en     = true;
-    csi_cfg.channel_filter_en = false; // raw subcarrier data
-    csi_cfg.manu_scale       = false;
-    csi_cfg.shift            = 15;
+    csi_cfg.lltf_en           = true;
+    csi_cfg.htltf_en          = true;
+    csi_cfg.stbc_htltf2_en    = true;
+    csi_cfg.ltf_merge_en      = true;
+    csi_cfg.channel_filter_en = false;
+    csi_cfg.manu_scale        = false;
+    csi_cfg.shift             = 15;
     esp_wifi_set_csi_config(&csi_cfg);
 
-    // 3. Register CSI receive callback
     esp_wifi_set_csi_rx_cb(csiCallback, NULL);
-
-    // 4. Enable CSI collection
     esp_wifi_set_csi(true);
 
     udp.begin(localPort);
     csiProcessor.reset();
 
-    // Adjust variance thresholds if needed (Low: 15.0f, High: 60.0f for sensitive detection)
-    classifier.setThresholds(20.0f, 80.0f);
-
     Serial.println(F("# WiSense CSI Occupancy Monitor Initialized"));
-    Serial.printf("# AP: %s  IP: %s  Port: %u\n",
-                  ssid, WiFi.softAPIP().toString().c_str(), localPort);
-    Serial.println(F("# CSV: DATA,timestamp_ms,csi_amp,csi_mean,csi_variance,csi_std,status"));
+    Serial.printf("# AP: %s  IP: %s  Port: %u\n", ssid, WiFi.softAPIP().toString().c_str(), localPort);
+    Serial.println(F("# Starting empty-space calibration (60 packets)..."));
+    Serial.println(F("# CSV: DATA,timestamp_ms,csi_amp,baseline,csi_variance,status"));
 }
 
 // ─── Loop ─────────────────────────────────────────────────────────────────────
 void loop() {
-    // Drain incoming UDP queue so it does not overflow
+    // Drain incoming UDP queue
     if (udp.parsePacket()) {
         udp.read(rxBuf, sizeof(rxBuf) - 1);
     }
 
-    // Consume the latest CSI sample posted by the callback
+    // Consume CSI samples
     if (s_newSample) {
         s_newSample = false;
         csiProcessor.addSample(s_latestAmp, millis());
         packetCount++;
+
+        // Initial empty-state calibration: collect 60 packets to determine noise floor
+        if (calibrating) {
+            calibrationSamples++;
+            if (calibrationSamples >= 60) {
+                CSIFeatures calib = csiProcessor.getFeatures();
+                classifier.calibrateBaseline(calib.ampMean, calib.ampVariance, calib.ampStdDev);
+                calibrating = false;
+
+                Serial.println(F("\n# ════════════════════════════════════════════"));
+                Serial.println(F("# CALIBRATION COMPLETE"));
+                Serial.printf("# Baseline Amplitude:      %.2f\n", calib.ampMean);
+                Serial.printf("# Ambient Noise Variance:  %.2f (StdDev: %.2f)\n", calib.ampVariance, calib.ampStdDev);
+                Serial.printf("# Dynamic Motion Threshold: %.2f\n", classifier.getMotionThreshold());
+                Serial.printf("# Dynamic Obstruction Dev:  %.2f\n", classifier.getAmpThreshold());
+                Serial.println(F("# ════════════════════════════════════════════\n"));
+            }
+        }
     }
 
     unsigned long now = millis();
 
-    // Re-classify once the window has enough samples
-    if (now - lastFeatureUpdate >= FEATURE_UPDATE_MS) {
+    // Re-classify every 250ms
+    if (!calibrating && (now - lastFeatureUpdate >= FEATURE_UPDATE_MS)) {
         lastFeatureUpdate = now;
         if (csiProcessor.getSampleCount() >= 15) {
-            calibrating  = false;
             lastFeatures = csiProcessor.getFeatures();
-            ClassificationResult result = classifier.classify(lastFeatures);
-            occupied = (result.state != STATE_EMPTY);
+            lastResult   = classifier.classify(lastFeatures);
+            occupied     = lastResult.isOccupied;
         }
     }
 
-    // CSV serial output at 2 Hz
+    // CSV and debug output at 2 Hz
     if (now - lastSerialUpdate >= SERIAL_UPDATE_MS) {
         lastSerialUpdate = now;
         const char* status = calibrating ? "Calibrating"
                            : occupied    ? "Occupied"
                                          : "Not Occupied";
-        Serial.printf("DATA,%lu,%.2f,%.2f,%.2f,%.2f,%s\n",
+
+        Serial.printf("DATA,%lu,%.2f,%.2f,%.2f,%s\n",
                       now,
                       lastFeatures.currentAmp,
-                      lastFeatures.ampMean,
+                      classifier.getBaseline(),
                       lastFeatures.ampVariance,
-                      lastFeatures.ampStdDev,
                       status);
+
+        if (!calibrating) {
+            Serial.printf("# [DEBUG] Var: %4.1f (Limit: %4.1f) | Diff: %4.1f (Limit: %4.1f) => %s\n",
+                          lastFeatures.ampVariance,
+                          classifier.getMotionThreshold(),
+                          lastResult.diffAmp,
+                          classifier.getAmpThreshold(),
+                          status);
+        }
     }
 
-    // OLED refresh at 2 Hz
+    // OLED refresh at 4 Hz
     if (now - lastOledUpdate >= OLED_UPDATE_MS) {
         lastOledUpdate = now;
         updateOled();
