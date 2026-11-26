@@ -2,3 +2,14 @@
 occupancy.db
 .idea/            
 *.db
+
+# Python
+.venv/
+__pycache__/
+.pytest_cache/
+
+# Raw CSI recordings (large; back up separately)
+data/raw/
+
+# Editor index caches
+.cache/

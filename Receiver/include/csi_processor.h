@@ -14,6 +14,7 @@ typedef struct {
     float    ampStdDev;        // standard deviation
     float    packetJitter;     // mean abs deviation of inter-arrival time from 20 ms
     float    signalVariation;  // max − min amplitude in window
+    float    rateOfChange;     // mean |a[i] - a[i-1]| — distinguishes human from object
     float    currentAmp;       // most recent sample
     uint32_t packetCount;      // samples currently in window
 } CSIFeatures;
@@ -41,6 +42,7 @@ private:
     float computeStdDev();
     float computeJitter();
     float computeSignalVariation();
+    float computeRateOfChange();
 };
 
 #endif

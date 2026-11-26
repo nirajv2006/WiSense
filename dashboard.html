@@ -21,273 +21,139 @@
 
       --green:     #3ddc84;
       --green-dim: #1a4a30;
-      --green-bg:  radial-gradient(ellipse at 50% 60%, #051a0f 0%, #07070e 70%);
-
       --red:       #f06060;
       --red-dim:   #4a1515;
-      --red-bg:    radial-gradient(ellipse at 50% 60%, #1a0505 0%, #07070e 70%);
-
       --blue:      #5b9cf6;
       --blue-dim:  #1a2a50;
-      --blue-bg:   radial-gradient(ellipse at 50% 60%, #080820 0%, #07070e 70%);
+      --amber:     #f0a060;
+      --amber-dim: #3a2010;
     }
 
-    html, body {
-      height: 100%;
-      background: var(--bg);
-      color: var(--text);
-      font-family: 'Inter', sans-serif;
-      font-size: 14px;
-    }
+    html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; font-size: 14px; }
+    body { display: flex; flex-direction: column; }
 
-    body {
-      display: flex;
-      flex-direction: column;
-    }
-
-    /* ── header ──────────────────────────────────────────────────────────── */
+    /* ── header ── */
     header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 28px;
-      height: 56px;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 28px; height: 56px;
       border-bottom: 1px solid var(--border);
-      background: var(--surface);
-      flex-shrink: 0;
-      gap: 16px;
+      background: var(--surface); flex-shrink: 0; gap: 16px;
     }
-
-    .logo {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
+    .logo { display: flex; align-items: center; gap: 10px; }
     .logo-icon {
-      width: 28px;
-      height: 28px;
-      background: var(--accent);
-      border-radius: 7px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 14px;
+      width: 28px; height: 28px; background: var(--accent);
+      border-radius: 7px; display: flex; align-items: center;
+      justify-content: center; font-size: 14px;
     }
+    .logo h1 { font-size: 0.95rem; font-weight: 700; color: #fff; letter-spacing: -0.2px; }
+    .logo span { font-weight: 400; color: var(--muted); font-size: 0.85rem; }
 
-    .logo h1 {
-      font-size: 0.95rem;
-      font-weight: 700;
-      color: #fff;
-      letter-spacing: -0.2px;
-    }
-
-    .logo span {
-      font-weight: 400;
-      color: var(--muted);
-      font-size: 0.85rem;
-    }
-
-    .header-right {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .conn-badge {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 0.78rem;
-      color: var(--muted);
-      padding: 0 4px;
-    }
-
-    .conn-dot {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: var(--muted);
-      flex-shrink: 0;
-    }
-
-    .conn-badge.on   { color: var(--green); }
-    .conn-badge.on   .conn-dot { background: var(--green); box-shadow: 0 0 6px var(--green); }
-    .conn-badge.sim  { color: var(--accent); }
-    .conn-badge.sim  .conn-dot { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+    .header-right { display: flex; align-items: center; gap: 10px; }
+    .conn-badge { display: flex; align-items: center; gap: 6px; font-size: 0.78rem; color: var(--muted); padding: 0 4px; }
+    .conn-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
+    .conn-badge.on  { color: var(--green); }
+    .conn-badge.on  .conn-dot { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    .conn-badge.sim { color: var(--accent); }
+    .conn-badge.sim .conn-dot { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
 
     .btn {
-      padding: 7px 16px;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-      background: var(--surface2);
-      color: var(--text);
-      font-family: 'Inter', sans-serif;
-      font-size: 0.8rem;
-      font-weight: 500;
-      cursor: pointer;
+      padding: 7px 16px; border-radius: 8px; border: 1px solid var(--border);
+      background: var(--surface2); color: var(--text); font-family: 'Inter', sans-serif;
+      font-size: 0.8rem; font-weight: 500; cursor: pointer;
       transition: background 0.15s, border-color 0.15s;
     }
     .btn:hover { background: #1a1a35; border-color: #2a2a50; }
     .btn:disabled { opacity: 0.3; cursor: default; }
-
-    .btn-primary {
-      background: var(--accent);
-      border-color: var(--accent);
-      color: #fff;
-    }
+    .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
     .btn-primary:hover { background: #8fa0f0; }
-
-    .btn-danger {
-      background: #2a0a0a;
-      border-color: #5a1a1a;
-      color: var(--red);
-    }
+    .btn-danger { background: #2a0a0a; border-color: #5a1a1a; color: var(--red); }
     .btn-danger:hover { background: #350d0d; }
 
-    /* ── compat warning ───────────────────────────────────────────────────── */
-    .warn {
-      background: #14100a;
-      border-bottom: 1px solid #2a2010;
-      padding: 8px 28px;
-      font-size: 0.78rem;
-      color: #c0a040;
-      display: none;
-    }
+    /* ── compat warning ── */
+    .warn { background: #14100a; border-bottom: 1px solid #2a2010; padding: 8px 28px; font-size: 0.78rem; color: #c0a040; display: none; }
     .warn.show { display: block; }
 
-    /* ── main grid ────────────────────────────────────────────────────────── */
-    main {
-      flex: 1;
-      display: grid;
-      grid-template-columns: 270px 1fr;
-      min-height: 0;
-    }
+    /* ── main grid ── */
+    main { flex: 1; display: grid; grid-template-columns: 260px 1fr; min-height: 0; }
 
-    /* ── left: status panel ───────────────────────────────────────────────── */
+    /* ── left: status panel ── */
     .status-panel {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 32px 20px;
-      border-right: 1px solid var(--border);
-      gap: 20px;
-      background: var(--bg);
-      transition: background 0.6s ease;
-      position: relative;
-      overflow: hidden;
+      display: flex; flex-direction: column; align-items: center;
+      padding: 24px 18px; border-right: 1px solid var(--border);
+      gap: 16px; background: var(--bg);
+      transition: background 0.6s ease; position: relative; overflow: hidden;
     }
-
     .status-panel::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      opacity: 0;
-      transition: opacity 0.6s ease;
-      pointer-events: none;
+      content: ''; position: absolute; inset: 0; opacity: 0;
+      transition: opacity 0.6s ease; pointer-events: none;
     }
+    .status-panel.occ-active::before { background: radial-gradient(ellipse at 50% 60%, #1a0505 0%, #07070e 70%); opacity: 1; }
+    .status-panel.occ-still::before  { background: radial-gradient(ellipse at 50% 60%, #1a0e03 0%, #07070e 70%); opacity: 1; }
+    .status-panel.occ-object::before { background: radial-gradient(ellipse at 50% 60%, #030a1a 0%, #07070e 70%); opacity: 1; }
+    .status-panel.occ-cal::before    { background: radial-gradient(ellipse at 50% 60%, #080820 0%, #07070e 70%); opacity: 1; }
 
-    .status-panel.occ-clear::before   { background: var(--green-bg); opacity: 1; }
-    .status-panel.occ-occupied::before{ background: var(--red-bg);   opacity: 1; }
-    .status-panel.occ-cal::before     { background: var(--blue-bg);  opacity: 1; }
-
-    .status-eyebrow {
-      font-size: 0.62rem;
-      letter-spacing: 3px;
-      text-transform: uppercase;
-      color: var(--muted);
-      font-weight: 600;
-      position: relative;
-    }
+    .status-eyebrow { font-size: 0.6rem; letter-spacing: 3px; text-transform: uppercase; color: var(--muted); font-weight: 600; position: relative; }
 
     .status-card {
-      width: 100%;
-      padding: 28px 16px;
-      border-radius: 14px;
-      border: 1px solid var(--border);
-      background: rgba(255,255,255,0.02);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 14px;
-      position: relative;
-      transition: border-color 0.4s, background 0.4s;
+      width: 100%; padding: 22px 14px; border-radius: 14px;
+      border: 1px solid var(--border); background: rgba(255,255,255,0.02);
+      display: flex; flex-direction: column; align-items: center; gap: 10px;
+      position: relative; transition: border-color 0.4s, background 0.4s;
     }
+    .status-panel.occ-active .status-card { border-color: var(--red-dim);   background: rgba(240,96,96,0.04); }
+    .status-panel.occ-still  .status-card { border-color: var(--amber-dim); background: rgba(240,160,96,0.04); }
+    .status-panel.occ-object .status-card { border-color: var(--blue-dim);  background: rgba(91,156,246,0.04); }
+    .status-panel.occ-cal    .status-card { border-color: var(--blue-dim);  background: rgba(123,141,232,0.04); }
 
-    .status-panel.occ-occupied .status-card {
-      border-color: var(--red-dim);
-      background: rgba(240,96,96,0.04);
-    }
-    .status-panel.occ-clear .status-card {
-      border-color: var(--green-dim);
-      background: rgba(61,220,132,0.04);
-    }
-    .status-panel.occ-cal .status-card {
-      border-color: var(--blue-dim);
-      background: rgba(91,156,246,0.04);
-    }
+    .entity-icon { font-size: 2.4rem; line-height: 1; filter: grayscale(1); transition: filter 0.4s; }
+    .status-panel.occ-active .entity-icon,
+    .status-panel.occ-still  .entity-icon,
+    .status-panel.occ-object .entity-icon,
+    .status-panel.occ-cal    .entity-icon { filter: grayscale(0); }
 
-    .status-icon {
-      font-size: 2.6rem;
-      line-height: 1;
-      filter: grayscale(1);
-      transition: filter 0.4s;
+    .entity-type {
+      font-size: 1.6rem; font-weight: 800; letter-spacing: 2px;
+      color: var(--muted); transition: color 0.4s;
     }
-    .status-panel.occ-occupied .status-icon { filter: grayscale(0); }
-    .status-panel.occ-clear    .status-icon { filter: grayscale(0); }
-    .status-panel.occ-cal      .status-icon { filter: grayscale(0); }
+    .status-panel.occ-active .entity-type { color: var(--red); }
+    .status-panel.occ-still  .entity-type { color: var(--amber); }
+    .status-panel.occ-object .entity-type { color: var(--blue); }
+    .status-panel.occ-cal    .entity-type { color: var(--accent); font-size: 1rem; }
 
-    .status-text {
-      font-size: 1.8rem;
-      font-weight: 800;
-      letter-spacing: 1px;
-      text-align: center;
-      line-height: 1.2;
-      color: var(--muted);
-      white-space: pre;
-      transition: color 0.4s;
-    }
-    .status-panel.occ-occupied .status-text { color: var(--red); }
-    .status-panel.occ-clear    .status-text { color: var(--green); }
-    .status-panel.occ-cal      .status-text { color: var(--accent); font-size: 1.1rem; font-weight: 600; }
+    .entity-sub { font-size: 0.65rem; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); transition: color 0.4s; min-height: 14px; }
+    .status-panel.occ-active .entity-sub { color: rgba(240,96,96,0.7); }
+    .status-panel.occ-still  .entity-sub { color: rgba(240,160,96,0.7); }
+    .status-panel.occ-object .entity-sub { color: rgba(91,156,246,0.7); }
 
-    .status-ring {
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      border: 2px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: border-color 0.4s;
+    /* level pill */
+    .level-pill {
+      padding: 3px 14px; border-radius: 20px;
+      font-size: 0.62rem; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase;
+      background: rgba(90,90,128,0.2); color: var(--muted);
+      transition: background 0.4s, color 0.4s;
     }
-    .status-ring-inner {
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      background: var(--muted);
-      transition: background 0.4s, box-shadow 0.4s;
-    }
+    .level-pill.lvl-low    { background: rgba(91,156,246,0.15); color: var(--blue); }
+    .level-pill.lvl-medium { background: rgba(240,160,96,0.15); color: var(--amber); }
+    .level-pill.lvl-high   { background: rgba(240,96,96,0.15);  color: var(--red); }
 
-    .status-panel.occ-occupied .status-ring { border-color: var(--red-dim); }
-    .status-panel.occ-occupied .status-ring-inner {
-      background: var(--red);
-      box-shadow: 0 0 10px var(--red);
-      animation: pulse-dot 1.4s ease-in-out infinite;
-    }
+    /* activity bar */
+    .activity-bar-wrap { width: 100%; }
+    .activity-bar-label { display: flex; justify-content: space-between; font-size: 0.6rem; color: var(--muted); margin-bottom: 5px; }
+    .activity-bar-track { height: 5px; border-radius: 3px; background: var(--surface2); overflow: hidden; }
+    .activity-bar-fill { height: 100%; border-radius: 3px; width: 0%; transition: width 0.6s ease, background 0.4s; background: var(--muted); }
 
-    .status-panel.occ-clear .status-ring { border-color: var(--green-dim); }
-    .status-panel.occ-clear .status-ring-inner {
-      background: var(--green);
-      box-shadow: 0 0 10px var(--green);
-    }
+    /* ring */
+    .status-ring { width: 34px; height: 34px; border-radius: 50%; border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; transition: border-color 0.4s; }
+    .status-ring-inner { width: 11px; height: 11px; border-radius: 50%; background: var(--muted); transition: background 0.4s, box-shadow 0.4s; }
 
-    .status-panel.occ-cal .status-ring { border-color: var(--blue-dim); }
-    .status-panel.occ-cal .status-ring-inner {
-      background: var(--accent);
-      animation: pulse-dot 1s ease-in-out infinite;
-    }
+    .status-panel.occ-active .status-ring { border-color: var(--red-dim); }
+    .status-panel.occ-active .status-ring-inner { background: var(--red); box-shadow: 0 0 10px var(--red); animation: pulse-dot 1s ease-in-out infinite; }
+    .status-panel.occ-still  .status-ring { border-color: var(--amber-dim); }
+    .status-panel.occ-still  .status-ring-inner { background: var(--amber); box-shadow: 0 0 8px var(--amber); animation: pulse-dot 2s ease-in-out infinite; }
+    .status-panel.occ-object .status-ring { border-color: var(--blue-dim); }
+    .status-panel.occ-object .status-ring-inner { background: var(--blue); box-shadow: 0 0 6px var(--blue); }
+    .status-panel.occ-cal    .status-ring { border-color: var(--blue-dim); }
+    .status-panel.occ-cal    .status-ring-inner { background: var(--accent); animation: pulse-dot 1s ease-in-out infinite; }
 
     @keyframes pulse-dot {
       0%, 100% { opacity: 1; transform: scale(1); }
@@ -295,107 +161,24 @@
     }
 
     /* variance bar */
-    .var-bar-wrap {
-      width: 100%;
-      position: relative;
-    }
+    .var-bar-wrap { width: 100%; position: relative; }
+    .var-bar-label { display: flex; justify-content: space-between; font-size: 0.6rem; color: var(--muted); margin-bottom: 5px; }
+    .var-bar-track { height: 4px; border-radius: 2px; background: var(--surface2); overflow: hidden; }
+    .var-bar-fill { height: 100%; border-radius: 2px; background: var(--accent); width: 0%; transition: width 0.5s ease, background 0.4s; }
 
-    .var-bar-label {
-      display: flex;
-      justify-content: space-between;
-      font-size: 0.65rem;
-      color: var(--muted);
-      margin-bottom: 5px;
-    }
+    /* ── right: chart panel ── */
+    .chart-panel { display: flex; flex-direction: column; padding: 22px 26px 18px; gap: 14px; }
+    .chart-header { display: flex; justify-content: space-between; align-items: center; }
+    .chart-title { font-size: 0.78rem; font-weight: 600; color: var(--text); }
+    .chart-meta  { font-size: 0.7rem; color: var(--muted); }
+    .chart-wrap { flex: 1; position: relative; min-height: 0; border-radius: 10px; overflow: hidden; background: var(--surface); border: 1px solid var(--border); padding: 14px 14px 8px; }
 
-    .var-bar-track {
-      height: 4px;
-      border-radius: 2px;
-      background: var(--surface2);
-      overflow: hidden;
-    }
-
-    .var-bar-fill {
-      height: 100%;
-      border-radius: 2px;
-      background: var(--accent);
-      width: 0%;
-      transition: width 0.5s ease, background 0.4s;
-    }
-
-    /* ── right: chart panel ───────────────────────────────────────────────── */
-    .chart-panel {
-      display: flex;
-      flex-direction: column;
-      padding: 22px 26px 18px;
-      gap: 14px;
-    }
-
-    .chart-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .chart-title {
-      font-size: 0.78rem;
-      font-weight: 600;
-      color: var(--text);
-      letter-spacing: -0.1px;
-    }
-
-    .chart-meta {
-      font-size: 0.7rem;
-      color: var(--muted);
-    }
-
-    .chart-wrap {
-      flex: 1;
-      position: relative;
-      min-height: 0;
-      border-radius: 10px;
-      overflow: hidden;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      padding: 14px 14px 8px;
-    }
-
-    /* ── stats bar ────────────────────────────────────────────────────────── */
-    footer {
-      border-top: 1px solid var(--border);
-      background: var(--surface);
-      padding: 12px 28px;
-      display: flex;
-      gap: 0;
-      flex-shrink: 0;
-    }
-
-    .stat {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      gap: 3px;
-      padding: 0 20px 0 0;
-      border-right: 1px solid var(--border);
-      margin-right: 20px;
-    }
+    /* ── footer stats ── */
+    footer { border-top: 1px solid var(--border); background: var(--surface); padding: 12px 28px; display: flex; gap: 0; flex-shrink: 0; }
+    .stat { flex: 1; display: flex; flex-direction: column; gap: 3px; padding: 0 16px 0 0; border-right: 1px solid var(--border); margin-right: 16px; }
     .stat:last-child { border-right: none; margin-right: 0; }
-
-    .stat-name {
-      font-size: 0.6rem;
-      text-transform: uppercase;
-      letter-spacing: 1.5px;
-      color: var(--muted);
-      font-weight: 600;
-    }
-
-    .stat-val {
-      font-size: 1.1rem;
-      font-weight: 700;
-      color: var(--muted);
-      font-variant-numeric: tabular-nums;
-      transition: color 0.3s;
-    }
+    .stat-name { font-size: 0.58rem; text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); font-weight: 600; }
+    .stat-val { font-size: 1rem; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; transition: color 0.3s; }
     .stat-val.lit { color: var(--text); }
   </style>
 </head>
@@ -421,14 +204,26 @@
 </div>
 
 <main>
-
   <!-- Left: occupancy status -->
   <div id="statusPanel" class="status-panel">
     <div class="status-eyebrow">Occupancy Status</div>
 
     <div class="status-card">
-      <div id="statusIcon" class="status-icon">📡</div>
-      <div id="statusText" class="status-text">—</div>
+      <div id="entityIcon" class="entity-icon">📡</div>
+      <div id="entityType" class="entity-type">—</div>
+      <div id="entitySub"  class="entity-sub"></div>
+      <div id="levelPill"  class="level-pill">—</div>
+
+      <div class="activity-bar-wrap">
+        <div class="activity-bar-label">
+          <span>Activity</span>
+          <span id="activityPct">—</span>
+        </div>
+        <div class="activity-bar-track">
+          <div id="activityBar" class="activity-bar-fill"></div>
+        </div>
+      </div>
+
       <div class="status-ring">
         <div class="status-ring-inner"></div>
       </div>
@@ -455,7 +250,6 @@
       <canvas id="chart"></canvas>
     </div>
   </div>
-
 </main>
 
 <footer>
@@ -476,8 +270,12 @@
     <div class="stat-val" id="sStd">—</div>
   </div>
   <div class="stat">
-    <div class="stat-name">Threshold</div>
-    <div class="stat-val lit">150 / 600</div>
+    <div class="stat-name">Rate of Change</div>
+    <div class="stat-val" id="sRoc">—</div>
+  </div>
+  <div class="stat">
+    <div class="stat-name">Level</div>
+    <div class="stat-val" id="sLevel">—</div>
   </div>
   <div class="stat">
     <div class="stat-name">Lines Rx</div>
@@ -494,8 +292,8 @@ const gradient = (() => {
   const canvas = document.getElementById('chart');
   const ctx = canvas.getContext('2d');
   const g = ctx.createLinearGradient(0, 0, 0, 300);
-  g.addColorStop(0,   'rgba(91,156,246,0.3)');
-  g.addColorStop(1,   'rgba(91,156,246,0)');
+  g.addColorStop(0, 'rgba(91,156,246,0.3)');
+  g.addColorStop(1, 'rgba(91,156,246,0)');
   return g;
 })();
 
@@ -507,16 +305,11 @@ const chart = new Chart(document.getElementById('chart'), {
       data: cData,
       borderColor: '#5b9cf6',
       backgroundColor: gradient,
-      fill: true,
-      tension: 0.4,
-      pointRadius: 0,
-      borderWidth: 2,
+      fill: true, tension: 0.4, pointRadius: 0, borderWidth: 2,
     }]
   },
   options: {
-    animation: false,
-    responsive: true,
-    maintainAspectRatio: false,
+    animation: false, responsive: true, maintainAspectRatio: false,
     interaction: { mode: 'none' },
     scales: {
       x: { display: false },
@@ -538,35 +331,54 @@ function pushPoint(mean) {
   chart.update('none');
 }
 
-// ── UI ─────────────────────────────────────────────────────────────────────────
+// ── status display ─────────────────────────────────────────────────────────────
 let totalLines = 0;
 
-function setStatus(status) {
+const LEVEL_PCT = { 'None': 0, 'Low': 33, 'Medium': 66, 'High': 100 };
+const LEVEL_COLOR = {
+  'None':   'var(--muted)',
+  'Low':    'var(--blue)',
+  'Medium': 'var(--amber)',
+  'High':   'var(--red)',
+};
+
+function setStatus(state, level) {
   const panel = document.getElementById('statusPanel');
-  const text  = document.getElementById('statusText');
-  const icon  = document.getElementById('statusIcon');
+  const icon  = document.getElementById('entityIcon');
+  const type  = document.getElementById('entityType');
+  const sub   = document.getElementById('entitySub');
+  const pill  = document.getElementById('levelPill');
+  const bar   = document.getElementById('activityBar');
+  const pct   = document.getElementById('activityPct');
+  const lvlSt = document.getElementById('sLevel');
 
   panel.className = 'status-panel';
 
-  if (status === 'Occupied') {
-    panel.classList.add('occ-occupied');
-    icon.textContent  = '🔴';
-    text.textContent  = 'OCCUPIED';
-    text.style.whiteSpace = '';
-  } else if (status === 'Not Occupied') {
-    panel.classList.add('occ-clear');
-    icon.textContent  = '🟢';
-    text.textContent  = 'NOT\nOCCUPIED';
-    text.style.whiteSpace = 'pre';
-  } else if (status === 'Calibrating') {
+  const levelPctVal = LEVEL_PCT[level] || 0;
+  bar.style.width   = levelPctVal + '%';
+  bar.style.background = LEVEL_COLOR[level] || 'var(--muted)';
+  pct.textContent   = level ? levelPctVal + '%' : '—';
+
+  pill.className = 'level-pill' + (level ? ' lvl-' + level.toLowerCase() : '');
+  pill.textContent = level || '—';
+  if (lvlSt) { lvlSt.textContent = level || '—'; lvlSt.className = level && level !== 'None' ? 'stat-val lit' : 'stat-val'; }
+
+  if (state === 'Calibrating') {
     panel.classList.add('occ-cal');
-    icon.textContent  = '📡';
-    text.textContent  = 'Calibrating…';
-    text.style.whiteSpace = '';
+    icon.textContent = '📡'; type.textContent = 'SCANNING'; sub.textContent = 'calibrating…';
+  } else if (state === 'Empty') {
+    icon.textContent = '🏠'; type.textContent = 'EMPTY'; sub.textContent = 'no presence';
+  } else if (state === 'Object') {
+    panel.classList.add('occ-object');
+    icon.textContent = '⚙️'; type.textContent = 'OBJECT'; sub.textContent = 'detected';
+  } else if (state === 'Human Still') {
+    panel.classList.add('occ-still');
+    icon.textContent = '🧘'; type.textContent = 'HUMAN'; sub.textContent = 'stationary';
+  } else if (state === 'Human Active') {
+    panel.classList.add('occ-active');
+    icon.textContent = '🚶'; type.textContent = 'HUMAN'; sub.textContent = 'moving';
   } else {
-    icon.textContent  = '📡';
-    text.textContent  = '—';
-    text.style.whiteSpace = '';
+    icon.textContent = '📡'; type.textContent = '—'; sub.textContent = '';
   }
 }
 
@@ -581,53 +393,74 @@ function updateVarianceBar(variance) {
   const num  = document.getElementById('varNum');
   const pct  = Math.min(100, (variance / 800) * 100);
   fill.style.width = pct + '%';
-  fill.style.background = variance < 150 ? '#3ddc84' : variance > 600 ? '#f06060' : '#f0a060';
+  fill.style.background = variance < 150 ? 'var(--green)' : variance > 600 ? 'var(--red)' : 'var(--amber)';
   num.textContent = variance.toFixed(0);
 }
 
-function updateStats({ amp, mean, variance, std }) {
+function updateStats({ amp, mean, variance, std, roc }) {
   totalLines++;
   document.getElementById('sAmp').textContent  = amp.toFixed(1);
   document.getElementById('sMean').textContent = mean.toFixed(1);
   document.getElementById('sVar').textContent  = variance.toFixed(1);
   document.getElementById('sStd').textContent  = std.toFixed(2);
+  document.getElementById('sRoc').textContent  = roc != null ? roc.toFixed(2) : '—';
   document.getElementById('sPkts').textContent = totalLines.toLocaleString();
-  ['sAmp','sMean','sVar','sStd','sPkts'].forEach(id =>
+  ['sAmp','sMean','sVar','sStd','sRoc','sPkts'].forEach(id =>
     document.getElementById(id).className = 'stat-val lit');
   updateVarianceBar(variance);
 }
 
 function resetUI() {
-  setStatus(null);
+  setStatus(null, null);
   setConn('Disconnected');
-  ['sAmp','sMean','sVar','sStd'].forEach(id => {
+  ['sAmp','sMean','sVar','sStd','sRoc','sLevel'].forEach(id => {
     document.getElementById(id).textContent = '—';
-    document.getElementById(id).className = 'stat-val';
+    document.getElementById(id).className   = 'stat-val';
   });
   document.getElementById('sPkts').textContent = '0';
   document.getElementById('varNum').textContent = '—';
   document.getElementById('varBarFill').style.width = '0%';
+  document.getElementById('activityBar').style.width = '0%';
+  document.getElementById('activityPct').textContent = '—';
+  totalLines = 0;
 }
 
 // ── parser ─────────────────────────────────────────────────────────────────────
 function parseLine(line) {
   if (!line.startsWith('DATA,')) return null;
   const p = line.split(',');
-  if (p.length < 7) return null;
-  return {
-    amp:      parseFloat(p[2]),
-    mean:     parseFloat(p[3]),
-    variance: parseFloat(p[4]),
-    std:      parseFloat(p[5]),
-    status:   p.slice(6).join(',').trim(),
-  };
+
+  // New format: DATA,ts,amp,mean,var,std,roc,sigvar,state,level  (≥10 fields)
+  if (p.length >= 10) {
+    return {
+      amp:      parseFloat(p[2]),
+      mean:     parseFloat(p[3]),
+      variance: parseFloat(p[4]),
+      std:      parseFloat(p[5]),
+      roc:      parseFloat(p[6]),
+      sigVar:   parseFloat(p[7]),
+      state:    p[8].trim(),
+      level:    p[9].trim(),
+    };
+  }
+
+  // Legacy format: DATA,ts,amp,mean,var,std,status  (≥7 fields)
+  if (p.length >= 7) {
+    const oldStatus = p.slice(6).join(',').trim();
+    let state = 'Empty', level = 'None';
+    if (oldStatus === 'Calibrating')  { state = 'Calibrating'; }
+    else if (oldStatus === 'Occupied'){ state = 'Human Active'; level = 'High'; }
+    return { amp: parseFloat(p[2]), mean: parseFloat(p[3]), variance: parseFloat(p[4]), std: parseFloat(p[5]), roc: null, sigVar: null, state, level };
+  }
+
+  return null;
 }
 
 function handle(parsed) {
   if (!parsed) return;
   if (parsed.mean > 0) pushPoint(parsed.mean);
   updateStats(parsed);
-  setStatus(parsed.status);
+  setStatus(parsed.state, parsed.level);
 }
 
 // ── simulation ─────────────────────────────────────────────────────────────────
@@ -635,8 +468,13 @@ const SIM_WIN = 20;
 let simTimer = null, simTick = 0, simAmps = [];
 
 function simPhase(t) {
-  if (t < 10) return { base: 45, noise: 2 };
-  return (t - 10) % 100 < 50 ? { base: 46, noise: 9 } : { base: 40, noise: 35 };
+  // Phase: calibrate → empty → object → human still → human active → loop
+  const cycle = (t - 10) % 120;
+  if (t < 10)             return { base: 45, noise: 1 };   // calibrating
+  if (cycle < 20)         return { base: 42, noise: 1 };   // empty
+  if (cycle < 50)         return { base: 44, noise: 4 };   // object (fan)
+  if (cycle < 85)         return { base: 46, noise: 9 };   // human still
+  return                         { base: 46, noise: 28 };  // human active
 }
 
 function simStep() {
@@ -645,14 +483,22 @@ function simStep() {
   const amp = base + (Math.random() * 2 - 1) * noise;
   simAmps.push(amp);
   if (simAmps.length > SIM_WIN) simAmps.shift();
-  const n   = simAmps.length;
-  const mean = simAmps.reduce((s, v) => s + v, 0) / n;
+
+  const n        = simAmps.length;
+  const mean     = simAmps.reduce((s, v) => s + v, 0) / n;
   const variance = simAmps.reduce((s, v) => s + (v - mean) ** 2, 0) / n;
-  handle({
-    amp, mean, variance,
-    std: Math.sqrt(variance),
-    status: n < 10 ? 'Calibrating' : variance < 150 ? 'Not Occupied' : 'Occupied',
-  });
+  const roc      = n > 1 ? simAmps.slice(1).reduce((s, v, i) => s + Math.abs(v - simAmps[i]), 0) / (n - 1) : 0;
+  const std      = Math.sqrt(variance);
+  const sigVar   = n > 1 ? Math.max(...simAmps) - Math.min(...simAmps) : 0;
+
+  let state, level;
+  if (simTick < 10)          { state = 'Calibrating';   level = 'None'; }
+  else if (variance < 150)   { state = 'Empty';          level = 'None'; }
+  else if (roc < 2.5)        { state = 'Object';         level = variance < 400 ? 'Low' : 'Medium'; }
+  else if (variance >= 600)  { state = 'Human Active';   level = 'High'; }
+  else                       { state = 'Human Still';    level = 'Medium'; }
+
+  handle({ amp, mean, variance, std, roc, sigVar, state, level });
 }
 
 document.getElementById('simBtn').addEventListener('click', () => {
@@ -687,7 +533,7 @@ document.getElementById('connectBtn').addEventListener('click', async () => {
 async function doConnect() {
   try {
     port = await navigator.serial.requestPort();
-    await port.open({ baudRate: 115200 });
+    await port.open({ baudRate: 921600 });
     totalLines = 0;
     setConn('Connected', 'on');
     document.getElementById('connectBtn').textContent = 'Disconnect';

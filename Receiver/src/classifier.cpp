@@ -1,36 +1,64 @@
 #include "classifier.h"
 
 Classifier::Classifier() {
-    varianceThresholdLow  = VARIANCE_THRESHOLD_LOW;
-    varianceThresholdHigh = VARIANCE_THRESHOLD_HIGH;
+    threshEmpty  = VARIANCE_EMPTY_THRESH;
+    threshMedium = VARIANCE_MEDIUM_THRESH;
+    threshHigh   = VARIANCE_HIGH_THRESH;
+    threshRoc    = HUMAN_ROC_THRESH;
 }
 
-ClassificationResult Classifier::classify(CSIFeatures features) {
-    ClassificationResult result;
-    result.features  = features;
-    result.timestamp = millis();
+ClassificationResult Classifier::classify(CSIFeatures f) {
+    ClassificationResult r;
+    r.features  = f;
+    r.timestamp = millis();
 
-    if (features.ampVariance < varianceThresholdLow) {
-        result.state = STATE_EMPTY;
-    } else if (features.ampVariance > varianceThresholdHigh) {
-        result.state = STATE_HIGH_ACTIVITY;
+    float var = f.ampVariance;
+    float roc = f.rateOfChange;
+
+    if (var < threshEmpty) {
+        // No significant signal disturbance — room is empty
+        r.state = STATE_EMPTY;
+        r.level = LEVEL_NONE;
+    } else if (roc < threshRoc) {
+        // Variance present but signal changes slowly → mechanical source (fan, AC)
+        r.state = STATE_OBJECT;
+        r.level = (var < threshMedium) ? LEVEL_LOW : LEVEL_MEDIUM;
+    } else if (var >= threshHigh) {
+        // High variance + human-like rate of change → person moving
+        r.state = STATE_HUMAN_ACTIVE;
+        r.level = LEVEL_HIGH;
     } else {
-        result.state = STATE_LOW_ACTIVITY;
+        // Moderate variance + human-like rate of change → person sitting / breathing
+        r.state = STATE_HUMAN_STILL;
+        r.level = LEVEL_MEDIUM;
     }
 
-    return result;
+    return r;
 }
 
 const char* Classifier::getStateName(OccupancyState state) {
     switch (state) {
-        case STATE_EMPTY:         return "EMPTY";
-        case STATE_LOW_ACTIVITY:  return "LOW";
-        case STATE_HIGH_ACTIVITY: return "HIGH";
-        default:                  return "UNKNOWN";
+        case STATE_EMPTY:        return "Empty";
+        case STATE_OBJECT:       return "Object";
+        case STATE_HUMAN_STILL:  return "Human Still";
+        case STATE_HUMAN_ACTIVE: return "Human Active";
+        default:                 return "Unknown";
     }
 }
 
-void Classifier::setThresholds(float varLow, float varHigh) {
-    varianceThresholdLow  = varLow;
-    varianceThresholdHigh = varHigh;
+const char* Classifier::getLevelName(OccupancyLevel level) {
+    switch (level) {
+        case LEVEL_NONE:   return "None";
+        case LEVEL_LOW:    return "Low";
+        case LEVEL_MEDIUM: return "Medium";
+        case LEVEL_HIGH:   return "High";
+        default:           return "None";
+    }
+}
+
+void Classifier::setThresholds(float varEmpty, float varMedium, float varHigh, float rocHuman) {
+    threshEmpty  = varEmpty;
+    threshMedium = varMedium;
+    threshHigh   = varHigh;
+    threshRoc    = rocHuman;
 }

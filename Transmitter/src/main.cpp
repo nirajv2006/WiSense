@@ -1,44 +1,37 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <WiFiUdp.h>
+#include <string.h>
+#include "esp_wifi.h"
+#include "soc/soc.h"
+#include "soc/rtc_cntl_reg.h"
 #include "secrets.h"
 
 const char* ssid = WIFI_SSID;
 const char* password = WIFI_PASSWORD;
 
 // Receiver IP and port
-IPAddress receiverIp(192,168,4,1);
+IPAddress receiverIp(192, 168, 4, 1);
 unsigned int receiverPort = RECEIVER_PORT;
 
 WiFiUDP udp;
 
-// Packet statistics
+// Fixed packet cadence: 20 ms (50 Hz) for consistent CSI sampling
+const unsigned long PACKET_INTERVAL_MS = 20;
+unsigned long nextPacketTime = 0;
 unsigned long packetCount = 0;
-unsigned long lastPacketTime = 0;
 
-// Variable payload buffer for signal diversity
-char payloadBuffer[64];
+// Fixed 64-byte payload structure to eliminate packet size/symbol variance
+struct __attribute__((packed)) CsiPacket {
+    uint32_t seqNum;
+    uint32_t timestamp;
+    char     padding[56]; // Padded to exactly 64 bytes total
+};
 
-// Generate variable payload size (20-60 bytes) to create richer signal variation
-void generatePayload(char* buffer, unsigned long seqNum, unsigned long timestamp) {
-  // Format: {seq_num}:{timestamp}:{variable_data}
-  // Variable data length cycles through 20-60 bytes pattern
-  int baseLen = 20;
-  int maxLen = 60;
-  int cycleLen = (seqNum % 5) * 8; // Creates pattern: 0, 8, 16, 24, 32
-  int payloadLen = baseLen + cycleLen;
-  
-  // Build structured packet
-  int offset = snprintf(buffer, 16, "%lu:%lu:", seqNum, timestamp);
-  
-  // Fill remaining space with pattern data for signal diversity
-  for (int i = offset; i < payloadLen && i < 63; i++) {
-    buffer[i] = 'A' + (i % 26); // Cycles through A-Z
-  }
-  buffer[payloadLen] = '\0';
-}
+CsiPacket txPacket;
 
 void setup() {
+  WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); // disable brownout detector
   Serial.begin(115200);
   delay(1000);
 
@@ -47,38 +40,84 @@ void setup() {
 
   Serial.print("Connecting to receiver AP");
   while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
+    delay(200);
     Serial.print(".");
   }
 
+  // 1. Disable modem sleep to prevent RF PLL/amplifier clock-down and thermal drift
+  WiFi.setSleep(false);
+  esp_wifi_set_ps(WIFI_PS_NONE);
+
+  // 2. Lock to 802.11n and max transmission power for clean HT-LTF subcarriers
+  esp_wifi_set_protocol(WIFI_IF_STA, WIFI_PROTOCOL_11N);
+  WiFi.setTxPower(WIFI_POWER_19_5dBm);
+
   Serial.println("\nConnected Successfully");
-  Serial.print("Transmitter IP Address: ");
+  Serial.print("Transmitter IP: ");
   Serial.println(WiFi.localIP());
 
+  // Initialize fixed dummy payload data
+  memset(txPacket.padding, 'A', sizeof(txPacket.padding));
+
   udp.begin(UDP_PORT);
-  lastPacketTime = millis();
+  nextPacketTime = millis() + PACKET_INTERVAL_MS;
   
-  Serial.println("Transmitter ready - sending structured CSI packets");
+  Serial.println("Transmitter ready - sending uniform 50 Hz CSI packets");
 }
 
+// If the receiver's AP disappears (e.g. the receiver resets when its serial
+// port is opened), rejoin quickly instead of waiting for the driver's slow
+// built-in retry backoff, which was observed to take ~30 s.
+const unsigned long RECONNECT_INTERVAL_MS = 3000;
+unsigned long lastReconnectAttempt = 0;
+bool wasConnected = true;
+
 void loop() {
-  packetCount++;
-  unsigned long currentTimestamp = millis();
-  
-  // Generate structured packet with variable payload
-  generatePayload(payloadBuffer, packetCount, currentTimestamp);
-  
-  // Send UDP packet to receiver
-  udp.beginPacket(receiverIp, receiverPort);
-  udp.write((const uint8_t*)payloadBuffer, strlen(payloadBuffer));
-  udp.endPacket();
-  
-  // Debug output every 100 packets
-  if (packetCount % 100 == 0) {
-    Serial.printf("Packets sent: %lu | Last payload size: %d bytes\n", 
-                  packetCount, strlen(payloadBuffer));
+  unsigned long now = millis();
+
+  if (WiFi.status() != WL_CONNECTED) {
+    if (wasConnected) {
+      Serial.println("Lost receiver AP - reconnecting");
+      wasConnected = false;
+      lastReconnectAttempt = now - RECONNECT_INTERVAL_MS;  // try immediately
+    }
+    if (now - lastReconnectAttempt >= RECONNECT_INTERVAL_MS) {
+      lastReconnectAttempt = now;
+      WiFi.disconnect();
+      WiFi.begin(ssid, password);
+    }
+    return;  // no point sending while disconnected
   }
-  
-  // Maintain 20ms packet interval for consistent signal flow
-  delay(20);
+  if (!wasConnected) {
+    wasConnected = true;
+    WiFi.setSleep(false);
+    esp_wifi_set_ps(WIFI_PS_NONE);
+    nextPacketTime = now + PACKET_INTERVAL_MS;
+    Serial.println("Reconnected - resuming 50 Hz packets");
+  }
+
+  // Non-blocking, jitter-free transmission scheduler
+  if ((long)(now - nextPacketTime) >= 0) {
+    nextPacketTime += PACKET_INTERVAL_MS;
+
+    // Guard against burst catch-up if execution was delayed
+    if ((long)(now - nextPacketTime) >= (long)PACKET_INTERVAL_MS) {
+      nextPacketTime = now + PACKET_INTERVAL_MS;
+    }
+
+    packetCount++;
+
+    txPacket.seqNum = packetCount;
+    txPacket.timestamp = now;
+
+    // Send constant-size binary packet
+    udp.beginPacket(receiverIp, receiverPort);
+    udp.write((const uint8_t*)&txPacket, sizeof(txPacket));
+    udp.endPacket();
+
+    // Throttled logging (every 250 packets / 5s) so UART doesn't delay packet transmission
+    if (packetCount % 250 == 0) {
+      Serial.printf("Packets sent: %lu\n", packetCount);
+    }
+  }
 }
