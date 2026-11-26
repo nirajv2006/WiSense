@@ -1,3 +1,3 @@
-# WiSense Python dependencies. Install with:
-#   python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
--r pipeline/requirements.txt
+# WiSense Python dependencies (ML pipeline in python/). Install with:
+#   cd python && python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
+-r python/requirements.txt

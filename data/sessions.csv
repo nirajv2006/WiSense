@@ -1,3 +1,0 @@
-session_id,file,label,people,room,setup,start_time,duration_s,frames,rate_hz,rx_seq_gaps,malformed,queue_drops,dropouts,max_silence_s,completed,stop_reason,notes
-lab1_A_low_20261111-160035,raw/lab1_A_low_20261111-160035.csv,low,1,lab1,A,2026-11-11T16:00:35,30.0,1201,40.02,0,0,0,,,True,,
-lab1_A_low_20261111-160938,raw/lab1_A_low_20261111-160938.csv,low,1,lab1,A,2026-11-11T16:09:38,30.0,1423,47.41,6,0,0,0,0.08,True,duration,

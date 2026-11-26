@@ -83,3 +83,34 @@ def test_variance_threshold_learns_ordering():
     X[:, FEATURE_NAMES.index("meanamp_var")] = x
     y = np.repeat(config.CLASSES, 50)
     assert (VarianceThreshold().fit(X, y).predict(X) == y).mean() > 0.95
+
+
+# ── Empty-room baseline features ────────────────────────────────────────────
+def test_baseline_features_zero_for_empty_and_grow_with_change():
+    from wisense.baseline import baseline_features, make_baseline
+    empty = 1 + 0.2 * np.sin(np.linspace(0, 6, 52))
+    base = make_baseline([empty, empty])
+    dev0, dist0 = baseline_features(empty, base)
+    assert abs(dev0) < 1e-9 and abs(dist0) < 1e-9          # identical to the empty room
+    bottles = empty.copy()
+    bottles[10:20] *= 0.7                                   # water absorbs some subcarriers
+    dev1, dist1 = baseline_features(bottles, base)
+    assert dev1 > 0.01 and dist1 > 0.001
+    assert baseline_features(bottles, None) == [0.0, 0.0]   # no baseline -> neutral zeros
+
+
+def test_add_baseline_features_shape():
+    from wisense.baseline import BASELINE_FEATURES, add_baseline_features
+    X, P = np.zeros((5, len(FEATURE_NAMES))), np.ones((5, 52))
+    out = add_baseline_features(X, P, np.ones(52))
+    assert out.shape == (5, len(FEATURE_NAMES) + len(BASELINE_FEATURES))
+
+
+# ── Recorder helpers ────────────────────────────────────────────────────────
+def test_suggest_next_mixes_classes():
+    import occupancy
+    counts = {"low": 3, "medium": 3, "high": 3}
+    assert occupancy.suggest_next(counts, ["low"]) != "low"           # never the same twice
+    assert occupancy.suggest_next({"low": 0, "medium": 5, "high": 5}, []) == "low"   # fewest first
+    # fewest is the one just recorded -> pick another so the order stays mixed
+    assert occupancy.suggest_next({"low": 1, "medium": 5, "high": 5}, ["low"]) != "low"

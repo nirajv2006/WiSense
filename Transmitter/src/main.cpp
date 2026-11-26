@@ -41,8 +41,36 @@ void setup() {
   udp.begin(UDP_PORT);
 }
 
+// If the receiver's AP disappears (it resets whenever the laptop opens its
+// serial port), rejoin quickly instead of waiting for the Wi-Fi driver's slow
+// built-in retry, which was observed to take ~30 s.
+const unsigned long RECONNECT_INTERVAL_MS = 3000;
+unsigned long lastReconnectAttempt = 0;
+bool wasConnected = true;
+
 //Sending packets continuously
 void loop() {
+  unsigned long now = millis();
+  if (WiFi.status() != WL_CONNECTED) {
+    if (wasConnected) {
+      Serial.println("Lost receiver AP - reconnecting");
+      wasConnected = false;
+      lastReconnectAttempt = now - RECONNECT_INTERVAL_MS;  // try immediately
+    }
+    if (now - lastReconnectAttempt >= RECONNECT_INTERVAL_MS) {
+      lastReconnectAttempt = now;
+      WiFi.disconnect();
+      WiFi.begin(ssid, password);
+    }
+    delay(20);
+    return;  // nothing to send while disconnected
+  }
+  if (!wasConnected) {
+    wasConnected = true;
+    WiFi.setSleep(false);
+    Serial.println("Reconnected - resuming packets");
+  }
+
   udp.beginPacket(receiverIp,receiverport);
   udp.print("TEST_PACKET");
   udp.endPacket();

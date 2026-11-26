@@ -194,6 +194,18 @@ Useful options: `occupancy.py status`, `train --window 3` (steadier, slower),
 `live --load-watts 1500` (energy-saved estimate), `record --simulate` (try the flow without boards).
 Live results are logged to `data/wisense.db`, so `streamlit run dashboard.py` shows them too.
 
+**Recording tips (cardboard demo with water bottles):**
+- **Mix the order** of classes. The recorder suggests the next class; recording all lows, then all
+  mediums, then all highs lets the model learn the boards' slow drift over time instead of occupancy.
+- **Type the bottle count** when asked "How many people / bottles?", and record a few clips of the
+  **empty box with 0**. Those build the *empty-room baseline*: two extra features (`base_dev`,
+  `base_corr_dist`) measure how far each window's subcarrier profile is from the empty box, which
+  is what still bottles change most. Without 0-clips, all `low` clips are used as the baseline.
+- `live --calibrate 10` records 10 s of the empty box at start-up as a fresh baseline
+  (useful if the box was moved or it is a different day).
+- Before each clip the recorder waits until CSI arrives at 40+ packets/s, so a transmitter that
+  is still rejoining after the receiver resets cannot spoil a clip.
+
 ---
 
 ## Thresholds

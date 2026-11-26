@@ -42,7 +42,8 @@ import joblib
 import numpy as np
 
 from wisense import config, storage
-from wisense.csi_io import CSIFrame, ReplaySource, SerialSource, load_recording, save_recording
+from wisense.baseline import BASELINE_FEATURES, add_baseline_features, make_baseline, window_profile
+from wisense.csi_io import CSIFrame, ReplaySource, SerialSource, load_recording, parse_line, save_recording
 from wisense.features import FEATURE_NAMES, compute_features
 from wisense.preprocessing import preprocess_window
 
@@ -54,6 +55,7 @@ LIVE_STEP_S = 0.5              # a new decision every 0.5 s
 LIVE_SMOOTH = 2                # average probabilities over the last N decisions (~1 s)
 MIN_FILL = 0.6                 # need >= 60 % of the expected packets in a window
 MODEL_PATH = config.MODELS_DIR / "instant_model.joblib"
+ALL_FEATURES = FEATURE_NAMES + BASELINE_FEATURES   # model inputs, in column order
 
 LEVEL_FOR = {c: config.POWER_LEVELS[c]["level"] for c in config.CLASSES}   # low->ECO ...
 SHARE_FOR = {config.POWER_LEVELS[c]["level"]: config.POWER_LEVELS[c]["share"] for c in config.CLASSES}
@@ -143,6 +145,42 @@ class SimulatedBoard:
             yield CSIFrame(t[i] * 1000.0, int(rssi[i]), iq[i])
 
 
+def suggest_next(counts: dict, recent: list[str]) -> str:
+    """Class to record next: the one with the fewest clips, avoiding the class just recorded.
+
+    Recording 10 low, then 10 medium, then 10 high ties each class to a stretch of
+    time, and the boards slowly drift (warm-up, nearby Wi-Fi). The model can then
+    learn 'early vs late' instead of occupancy. Mixing the order prevents that."""
+    order = sorted(config.CLASSES, key=lambda c: (counts[c], recent[-1:] == [c]))
+    if recent and order[0] == recent[-1] and len(order) > 1:
+        order = order[1:] + order[:1]
+    return order[0]
+
+
+def wait_for_stream(src, min_rate: float = 40, timeout: float = 90) -> bool:
+    """Block until CSI arrives at >= min_rate packets/s. Opening the port resets the
+    receiver, and the transmitter then needs a few seconds to rejoin."""
+    ser, t0 = src.ser, time.time()
+    bucket, n = t0, 0
+    while time.time() - t0 < timeout:
+        raw = ser.readline()
+        if raw and parse_line(raw.decode(errors="ignore")) is not None:
+            n += 1
+        now = time.time()
+        if now - bucket >= 1.0:
+            rate = n / (now - bucket)
+            sys.stdout.write(f"\r  checking CSI stream: {rate:3.0f} pkt/s (need {min_rate:.0f}) "
+                             f"{now - t0:3.0f}s ")
+            sys.stdout.flush()
+            if rate >= min_rate:
+                print(" - ok")
+                return True
+            bucket, n = now, 0
+    print(f"\n  No steady CSI after {timeout:.0f} s. Is the transmitter powered? "
+          "Try resetting it. Is a serial monitor holding the port?")
+    return False
+
+
 def ask(prompt: str) -> str:
     try:
         return input(prompt).strip().lower()
@@ -163,9 +201,13 @@ def cmd_record(args):
 
     print(f"Session '{session}'. Each recording lasts {args.seconds} s.")
     print("Before each one: put the room in ONE occupancy state and keep it that way until it ends.")
+    print("Mix the classes (l, m, h, m, l, ...) rather than recording all of one class in a row.")
+    recent: list[str] = []                                  # labels saved in this sitting, in order
     while True:
         counts = tally(include_synthetic=synthetic)
         print_tally(counts, args.target)
+        nxt = suggest_next(counts, recent)
+        print(f"  Suggested next: '{nxt[0]}' ({nxt}, {config.CLASS_DEFINITIONS[nxt]})")
         if all(n >= args.target for n in counts.values()):
             print(f"  Every class has at least {args.target} recordings - you can train now "
                   f"('t'). More recordings (different times, positions, activities) still help.")
@@ -185,6 +227,11 @@ def cmd_record(args):
         if synthetic:                                      # the simulator needs to know what to fake
             src.next_label = preset or ["low", "medium", "high"][int(np.random.randint(3))]
 
+        if len(recent) >= 2 and preset and recent[-2:] == [preset, preset]:
+            print(f"  NOTE: that would be 3 '{preset}' clips in a row. Mixing classes avoids "
+                  "the model learning time drift instead of occupancy.")
+        if not synthetic and not wait_for_stream(src):
+            continue
         for i in (3, 2, 1):
             sys.stdout.write(f"\r  starting in {i} ...")
             sys.stdout.flush()
@@ -209,7 +256,7 @@ def cmd_record(args):
         if label == "discard":
             print("  discarded.")
             continue
-        people = ask("  How many people? (Enter to skip) > ")
+        people = ask("  How many people / bottles? (0 = empty, Enter to skip) > ")
         people = int(people) if people.isdigit() else None
         if people is not None:
             lo, hi = config.CLASS_PEOPLE_RANGE[label]
@@ -226,6 +273,7 @@ def cmd_record(args):
                 "packets": len(frames), "rate_hz": round(rate, 1),
                 "synthetic": synthetic, "source": port_name}
         save_recording(frames, host_times, path, meta)
+        recent.append(label)
         print(f"  saved {label.upper()} ({len(frames)} packets) -> {path.relative_to(config.ROOT)}")
 
 
@@ -249,9 +297,25 @@ def windows_of(ts, window_s=LIVE_WINDOW_S, step_s=LIVE_STEP_S):
         t += step_s * 1000
 
 
-def featurize(ts, iq, rssi) -> list[float]:
-    f = compute_features(preprocess_window(ts, iq, rssi))
-    return [f[k] for k in FEATURE_NAMES]
+def featurize(ts, iq, rssi) -> tuple[list[float], np.ndarray]:
+    """Base features of one window, plus its subcarrier profile (for the baseline features)."""
+    p = preprocess_window(ts, iq, rssi)
+    f = compute_features(p)
+    return [f[k] for k in FEATURE_NAMES], window_profile(p)
+
+
+def pick_baseline(P, empty, low, idx):
+    """Empty-room baseline from the windows in `idx` (training data only).
+
+    Uses recordings typed as 0 people/bottles; if there are none, falls back to
+    all 'low' recordings (less precise). Returns (baseline, source_description)."""
+    sel = idx[empty[idx]]
+    if len(sel):
+        return make_baseline(P[sel]), f"{len(sel)} windows from empty (0) recordings"
+    sel = idx[low[idx]]
+    if len(sel):
+        return make_baseline(P[sel]), f"{len(sel)} windows from 'low' recordings (no empty ones typed as 0)"
+    return None, "none"
 
 
 def cmd_train(args):
@@ -274,16 +338,25 @@ def cmd_train(args):
 
     win_s = args.window
     print(f"  Extracting features ({win_s:g} s windows every {LIVE_STEP_S} s) ...")
-    X, y, g = [], [], []
+    X, P, y, g, empty = [], [], [], [], []
     for i, (p, meta) in enumerate(recs):
         ts, rssi, iq, _ = load_recording(p)
         for s, e in windows_of(ts, win_s):
-            X.append(featurize(ts[s:e], iq[s:e], rssi[s:e]))
+            feats, prof = featurize(ts[s:e], iq[s:e], rssi[s:e])
+            X.append(feats)
+            P.append(prof)
             y.append(meta["label"])
             g.append(i)
-    X, y, g = np.array(X), np.array(y), np.array(g)
-    X = np.nan_to_num(X)
-    print(f"  {len(recs)} recordings -> {len(X)} windows")
+            empty.append(meta.get("people") == 0)
+    X, P, y, g, empty = np.array(X), np.array(P), np.array(y), np.array(g), np.array(empty)
+    X, P = np.nan_to_num(X), np.nan_to_num(P)
+    low = y == config.CLASSES[0]
+    n_empty = len({int(i) for i in g[empty]})
+    print(f"  {len(recs)} recordings -> {len(X)} windows "
+          f"({n_empty} empty recordings typed as 0, used for the empty-room baseline)")
+    if n_empty == 0:
+        print("  TIP: record a few clips of the EMPTY box and type 0 for the count. "
+              "That gives a clean empty-room baseline for the static-bottle features.")
 
     model = RandomForestClassifier(n_estimators=300, min_samples_leaf=3, max_features="sqrt",
                                    class_weight="balanced", n_jobs=-1, random_state=0)
@@ -294,7 +367,9 @@ def cmd_train(args):
     if n_splits >= 2:
         pred = np.empty(len(y), dtype=object)
         for tr, te in StratifiedGroupKFold(n_splits, shuffle=True, random_state=0).split(X, y, g):
-            pred[te] = clone(model).fit(X[tr], y[tr]).predict(X[te])
+            base, _ = pick_baseline(P, empty, low, tr)          # training folds only: no leakage
+            Xf = add_baseline_features(X, P, base)
+            pred[te] = clone(model).fit(Xf[tr], y[tr]).predict(Xf[te])
         acc = accuracy_score(y, pred)
         f1 = f1_score(y, pred, average="macro", labels=config.CLASSES)
         cm = confusion_matrix(y, pred, labels=config.CLASSES)
@@ -316,14 +391,18 @@ def cmd_train(args):
             print("\n    Accuracy is low. Record more varied clips, keep boards fixed in place, "
                   "and make sure each clip really matches its label.")
 
-    model.fit(X, y)
+    baseline, base_src = pick_baseline(P, empty, low, np.arange(len(X)))
+    model.fit(add_baseline_features(X, P, baseline), y)
+    print(f"\n  Empty-room baseline: {base_src}")
+    importances = sorted(zip(ALL_FEATURES, model.feature_importances_), key=lambda t: -t[1])
+    print("  Most useful features: " + ", ".join(f"{n} ({v:.0%})" for n, v in importances[:5]))
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
-    meta = {"feature_names": FEATURE_NAMES, "classes": config.CLASSES, "window_s": win_s,
+    meta = {"feature_names": ALL_FEATURES, "baseline_source": base_src, "classes": config.CLASSES, "window_s": win_s,
             "step_s": LIVE_STEP_S, "counts": counts, "n_windows": int(len(X)), "cv": cv,
             "synthetic": bool(args.include_synthetic and any(m.get("synthetic") for _, m in recs)),
             "trained": datetime.now().isoformat(timespec="seconds")}
-    joblib.dump({"model": model, "meta": meta}, out)
+    joblib.dump({"model": model, "meta": meta, "baseline": baseline}, out)
     print(f"\n  Model saved -> {out}")
     print("  Next: python occupancy.py live --port <your port>")
 
@@ -373,11 +452,12 @@ def cmd_live(args):
     except FileNotFoundError:
         raise SystemExit(f"No model at {args.model}. Record data and run 'python occupancy.py train' first.")
     model, meta = bundle["model"], bundle["meta"]
-    if meta["feature_names"] != FEATURE_NAMES:
+    if meta["feature_names"] != ALL_FEATURES:
         raise SystemExit("Model uses a different feature set - retrain with 'python occupancy.py train'.")
     if meta.get("synthetic"):
         print("NOTE: model trained on SYNTHETIC data - only for testing the software.")
     win_s, step_s = meta.get("window_s", LIVE_WINDOW_S), args.step or meta.get("step_s", LIVE_STEP_S)
+    baseline = bundle.get("baseline")
     classes = list(model.classes_)
 
     if args.port:
@@ -400,8 +480,29 @@ def cmd_live(args):
     print(f"Power: LOW->ECO ({SHARE_FOR['ECO']:.0%})  MEDIUM->STANDARD ({SHARE_FOR['STANDARD']:.0%})  "
           f"HIGH->FULL (100%), load {args.load_watts:.0f} W\n")
 
+    calib = [] if args.calibrate else None
+    if calib is not None:
+        print(f"Calibrating: keep the room/box EMPTY for {args.calibrate:.0f} s ...")
+    elif baseline is None:
+        print("NOTE: model has no empty-room baseline; baseline features are 0 (use --calibrate).")
+
     try:
         for fr in src:
+            if calib is not None:                          # collect the empty-room baseline first
+                calib.append(fr)
+                if fr.ts_ms - calib[0].ts_ms < args.calibrate * 1000:
+                    continue
+                cts = np.array([f.ts_ms for f in calib])
+                ciq = np.vstack([f.iq for f in calib])
+                crs = np.array([f.rssi for f in calib], float)
+                profs = [featurize(cts[s:e], ciq[s:e], crs[s:e])[1] for s, e in windows_of(cts, win_s)]
+                if profs:
+                    baseline = make_baseline(profs)
+                    print(f"Baseline captured from {len(profs)} windows. Live from now on.\n")
+                else:
+                    print("Calibration got too little CSI; keeping the model's stored baseline.\n")
+                calib = None
+                continue
             if last_ts is not None and fr.ts_ms + 5000 < last_ts:     # board restarted / replay looped
                 buf.clear(); probs.clear(); next_eval = None
             last_ts = fr.ts_ms
@@ -420,7 +521,8 @@ def cmd_live(args):
             iq = np.vstack([f.iq for f in frames])
             rssi = np.array([f.rssi for f in frames], float)
             t_calc = time.perf_counter()
-            x = np.nan_to_num(np.array([featurize(ts, iq, rssi)]))
+            feats, prof = featurize(ts, iq, rssi)
+            x = add_baseline_features(np.nan_to_num(np.array([feats])), np.nan_to_num([prof]), baseline)
             p = model.predict_proba(x)[0]
             p = np.array([p[classes.index(c)] if c in classes else 0.0 for c in config.CLASSES])
             calc_ms = (time.perf_counter() - t_calc) * 1000
@@ -502,6 +604,8 @@ def main():
     lv.add_argument("--loop", action="store_true")
     lv.add_argument("--no-db", action="store_true", help="don't log to data/wisense.db (dashboard)")
     lv.add_argument("--no-color", action="store_true")
+    lv.add_argument("--calibrate", type=float, default=0, metavar="SECONDS",
+                    help="first record SECONDS of the EMPTY room as a fresh baseline (e.g. 10)")
     lv.set_defaults(func=cmd_live)
 
     args = ap.parse_args()
