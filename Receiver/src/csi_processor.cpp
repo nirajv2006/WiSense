@@ -67,28 +67,15 @@ float CSIProcessor::computeSignalVariation() {
     return mx - mn;
 }
 
-float CSIProcessor::computeRateOfChange() {
-    if (ampCount < 2) return 0.0f;
-    float sum = 0.0f;
-    // Walk through buffer in chronological order computing |a[i] - a[i-1]|
-    for (uint32_t i = 1; i < ampCount; i++) {
-        uint32_t curr = (ampIndex - ampCount + i     + CSI_WINDOW_SIZE * 2) % CSI_WINDOW_SIZE;
-        uint32_t prev = (ampIndex - ampCount + i - 1 + CSI_WINDOW_SIZE * 2) % CSI_WINDOW_SIZE;
-        sum += fabsf(ampBuffer[curr] - ampBuffer[prev]);
-    }
-    return sum / (float)(ampCount - 1);
-}
-
 CSIFeatures CSIProcessor::getFeatures() {
     CSIFeatures f;
-    f.ampMean         = computeMean();
-    f.ampVariance     = computeVariance();
-    f.ampStdDev       = computeStdDev();
-    f.packetJitter    = computeJitter();
+    f.ampMean        = computeMean();
+    f.ampVariance    = computeVariance();
+    f.ampStdDev      = computeStdDev();
+    f.packetJitter   = computeJitter();
     f.signalVariation = computeSignalVariation();
-    f.rateOfChange    = computeRateOfChange();
-    f.currentAmp      = (ampCount > 0) ? ampBuffer[(ampIndex - 1 + CSI_WINDOW_SIZE) % CSI_WINDOW_SIZE] : 0.0f;
-    f.packetCount     = ampCount;
+    f.currentAmp     = (ampCount > 0) ? ampBuffer[(ampIndex - 1 + CSI_WINDOW_SIZE) % CSI_WINDOW_SIZE] : 0.0f;
+    f.packetCount    = ampCount;
     return f;
 }
 

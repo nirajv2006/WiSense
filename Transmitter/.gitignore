@@ -5,3 +5,4 @@
 .vscode/ipch
 compile_commands.json
 src/secrets.h
+include/secrets.h
